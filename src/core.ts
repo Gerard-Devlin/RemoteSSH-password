@@ -38,7 +38,12 @@ export interface UI {
     failed: boolean,
     signal?: AbortSignal,
   ): Promise<Reply>;
-  trust(target: Target, prompt: string, signal?: AbortSignal): Promise<Reply>;
+  trust(
+    target: Target,
+    prompt: string,
+    fingerprint: string | undefined,
+    signal?: AbortSignal,
+  ): Promise<Reply>;
   changed(target: Target): void;
   cancel(session: string): void;
 }
@@ -223,7 +228,12 @@ export class CredentialCore {
     if (m.failed) await this.reject(s);
     if (s.ended || epoch !== this.generation) return { canceled: true };
     if (m.kind === 'trust')
-      return this.ui.trust(s.target, m.prompt ?? '', s.abort.signal);
+      return this.ui.trust(
+        s.target,
+        m.prompt ?? '',
+        m.fingerprint,
+        s.abort.signal,
+      );
     const cacheable =
       m.kind === 'password' &&
       m.verified === true &&

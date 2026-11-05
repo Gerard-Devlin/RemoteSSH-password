@@ -20,7 +20,7 @@ The four Windows executables are the same Go binary dispatched by filename. Prod
 1. A local VS Code extension host activates on startup or SSH remote-authority resolution. Enable deploys a stable bridge and records original settings after explicit consent.
 2. Remote-SSH invokes that bridge. Unsupported invocations/builds use ordinary OpenSSH fallback.
 3. For a supported session, the bridge resolves host, port, and username using real OpenSSH. The broker fixes the session target and validates the participating process.
-4. OpenSSH performs host-key checks. A first-trust prompt is shown verbatim with a localized warning. Changed host keys are not silently accepted.
+4. OpenSSH performs host-key checks. A recognized first-trust request shows localized server/key details, with the fingerprint matched to the active SSH session. Unrecognized requests retain the original OpenSSH text. Changed host keys are not silently accepted.
 5. A verified fixed-password prompt may receive one matching saved value. Otherwise the UI requests a password and persistence choice. Other prompt kinds stay manual.
 6. A new remembered candidate remains in memory until the active SSH child reports the validated successful password-authentication sequence. Only then may the owning extension host persist it.
 7. Rejection, cancellation, disconnect, revocation, and disable clear or invalidate candidates according to the credential state machine. A network failure alone does not delete an old saved value.
@@ -33,6 +33,6 @@ The stable `globalStorageUri/bridge-v1` directory survives versioned extension r
 
 ## Localization
 
-Manifest contributions use `package.nls.json` and `package.nls.zh-cn.json`. Runtime UI uses English literal keys in `vscode.l10n.t` and the Simplified Chinese bundle in `l10n/`. VS Code loads the selected locale. OpenSSH prompts, target metadata, fingerprints, and parser inputs are not translated. Native helpers do not display a separate password UI.
+Manifest contributions use `package.nls.json` and `package.nls.zh-cn.json`. Runtime UI uses English literal keys in `vscode.l10n.t` and the Simplified Chinese bundle in `l10n/`. VS Code loads the selected locale. Authentication challenges, target metadata, fingerprint values, and parser inputs are not translated. Recognized host-trust requests use localized labels around the original key details. Native helpers do not display a separate password UI.
 
 See the [security model](../SECURITY.md) for the trust boundary, exact-build restrictions, and known limitations.

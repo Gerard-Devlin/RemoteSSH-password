@@ -1,6 +1,6 @@
 # Testing
 
-[Back to README](../README.md) · [Latest local report](testing/2026-11-05.md)
+[Back to README](../README.md) · [Latest local report](testing/2026-11-06.md)
 
 ## Test layers
 
@@ -27,7 +27,7 @@ npm run package
 npm run verify:package
 ```
 
-Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-05.md).
+Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-06.md).
 
 Loopback fixtures bind only to `127.0.0.1`. They use generated synthetic passwords and in-memory host keys, separate SSH config/known_hosts, and temporary SFTP data. They never connect to a user server or change real VS Code settings. Runtime fixture data remains in ignored directories for inspection; never upload it without reviewing metadata.
 

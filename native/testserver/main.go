@@ -18,10 +18,11 @@ import (
 )
 
 type Config struct {
-	DelayPasswordMS int    `json:"delayPasswordMS"`
-	Password        string `json:"password"`
-	Port            string `json:"port"`
-	Banner          string `json:"banner"`
+	KeyboardInteractive bool   `json:"keyboardInteractive"`
+	DelayPasswordMS     int    `json:"delayPasswordMS"`
+	Password            string `json:"password"`
+	Port                string `json:"port"`
+	Banner              string `json:"banner"`
 }
 
 var output sync.Mutex
@@ -52,6 +53,24 @@ func main() {
 		}
 		return nil, nil
 	}, BannerCallback: func(c ssh.ConnMetadata) string { return cfg.Banner }}
+	if cfg.KeyboardInteractive {
+		config.PasswordCallback = nil
+		config.KeyboardInteractiveCallback = func(c ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+			answers, err := challenge("", "", []string{"Password: "}, []bool{false})
+			if err != nil {
+				return nil, err
+			}
+			mu.Lock()
+			pass := cfg.Password
+			mu.Unlock()
+			ok := len(answers) == 1 && answers[0] == pass
+			emit(map[string]any{"type": "attempt", "user": c.User(), "accepted": ok, "method": "keyboard-interactive"})
+			if !ok {
+				return nil, fmt.Errorf("rejected")
+			}
+			return nil, nil
+		}
+	}
 	config.AddHostKey(key)
 	addr := "127.0.0.1:0"
 	if cfg.Port != "" {

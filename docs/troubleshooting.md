@@ -19,6 +19,10 @@ The [compatibility guide](compatibility.md) lists the exact supported executable
 
 If an old password is rejected, it is not repeatedly offered automatically in the same connection. Enter the replacement when prompted; it is saved only after success. Network loss or a timeout alone does not mark a saved password as wrong.
 
+## A password prompt says the response will not be saved
+
+This is the manual-authentication path. The original server request appears as the masked input’s placeholder, with a short localized explanation below it. A challenge named Password can still be keyboard-interactive; this preview remembers only verified authentication using SSH’s password method. It does not infer a cacheable password from the challenge text.
+
 ## Cancel or forget
 
 Cancel the input to stop that authentication attempt. To remove a saved value, run **Forget Password** or select an entry in **Manage Saved Credentials**. The list displays metadata only.

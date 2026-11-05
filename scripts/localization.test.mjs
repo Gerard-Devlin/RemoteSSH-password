@@ -99,11 +99,36 @@ test('production UI source has no hardcoded Chinese text or translated control-f
   assert.ok(source.includes('remember: choice.remember'));
 });
 
-test('raw SSH prompt and fingerprint context are not translated', () => {
+test('raw manual challenges and unrecognized SSH requests are not translated', () => {
   const manual = calls.find(
-    (c) => c.arguments[0].text === 'Manual authentication (not saved): {0}',
+    (c) =>
+      c.arguments[0].text ===
+      'Complete the server authentication step. This response will not be saved.',
   );
-  assert.equal(manual.arguments[1].getText(ast), 'prompt.slice(0, 500)');
+  assert.equal(
+    manual.arguments.length,
+    1,
+    'The help text must not contain the server prompt',
+  );
+  let placeholder;
+  function findPlaceholder(node) {
+    if (
+      ts.isPropertyAssignment(node) &&
+      node.name.getText(ast) === 'placeHolder'
+    )
+      placeholder = node.initializer;
+    ts.forEachChild(node, findPlaceholder);
+  }
+  findPlaceholder(ast);
+  assert.ok(ts.isConditionalExpression(placeholder));
+  assert.equal(placeholder.whenTrue.expression.getText(ast), 'vscode.l10n.t');
+  assert.equal(placeholder.whenTrue.arguments[0].text, 'Enter server password');
+  assert.equal(placeholder.whenFalse.expression.getText(ast), 'vscode.l10n.t');
+  assert.equal(placeholder.whenFalse.arguments[0].text, 'Server request: {0}');
+  assert.equal(
+    placeholder.whenFalse.arguments[1].getText(ast),
+    'prompt.slice(0, 500)',
+  );
   assert.ok(source.includes('prompt.slice(0, 8192)'));
   assert.ok(source.includes("? { value: 'yes' }"));
 });

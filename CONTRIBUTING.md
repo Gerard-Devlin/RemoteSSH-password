@@ -55,7 +55,7 @@ The extension follows VS Code's display language, using [native localization](ht
 3. For manifest contributions, add matching keys to `package.nls.json` and `package.nls.zh-cn.json`, referenced as `%key%` in `package.json`.
 4. Run `npm run test:localization` and `npm run test:extension`. Check both display languages in a real development host before calling localization visually verified.
 
-Do not translate OpenSSH parser inputs, raw server prompts, hostnames, usernames, fingerprints, command IDs, or protocol fields. Drive control flow with IDs/booleans rather than translated labels. English remains the fallback and the primary documentation language.
+Do not translate OpenSSH parser inputs, raw authentication challenges, hostnames, usernames, fingerprints, command IDs, or protocol fields. Recognized host-trust requests may use localized labels while preserving fingerprint values and matching them to the active SSH session. Drive control flow with IDs/booleans rather than translated labels. English remains the fallback and the primary documentation language.
 
 ## Pull requests
 

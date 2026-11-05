@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.3 — 2026-11-06
+
+- Replace the standard raw OpenSSH host-trust transcript with a concise English/Chinese dialog: server address, key type, exact fingerprint, and an explicit Trust and Connect button.
+- Match displayed key details against the active SSH session; preserve the original OpenSSH request when it cannot be recognized safely.
+- Keep first trust explicit and preserve OpenSSH host-key checks. Cover parsing and the bilingual dialog with unit and real OpenSSH extension-entry tests.
+
+## 0.1.2 — 2026-11-06
+
+- Separate the original server challenge from manual-authentication help: keep the request in the masked input placeholder and show a concise localized explanation below it.
+- Localize the fixed-password placeholder and manual server-request label in English and Simplified Chinese.
+- Preserve the existing rules for remembering passwords; keyboard-interactive and other manual challenges remain unsaved.
+- Cover password-like keyboard-interactive prompts with real OpenSSH in both language variants of the extension-entry test.
+
 ## 0.1.1 — 2026-11-06
 
 - Add native VS Code localization with English fallback and Simplified Chinese for commands, authentication UI, management, confirmations, and diagnostics.

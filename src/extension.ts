@@ -20,6 +20,7 @@ import {
 } from './core';
 import { restoration, OwnedSettings } from './settings';
 import { TESTED_SSH_SHA256 } from './compatibility';
+import { parseHostIdentity, serverAddress } from './hostIdentity';
 const execute = promisify(execFile);
 const stateKey = 'ownedSettings.v1';
 const indexKey = 'credentialIndex.v1';
@@ -63,7 +64,7 @@ class Runtime implements vscode.Disposable {
       context.secrets,
       {
         ask: (t, p, c, f, s) => this.input(t, p, c, f, s),
-        trust: (t, p, s) => this.trust(t, p, s),
+        trust: (t, p, f, s) => this.trust(t, p, f, s),
         changed: (t) => {
           void vscode.window.showWarningMessage(
             vscode.l10n.t(
@@ -132,9 +133,11 @@ class Runtime implements vscode.Disposable {
                     'Enter the server password. It will only be saved after successful authentication.',
                   )
               : vscode.l10n.t(
-                  'Manual authentication (not saved): {0}',
-                  prompt.slice(0, 500),
+                  'Complete the server authentication step. This response will not be saved.',
                 ),
+            placeHolder: cacheable
+              ? vscode.l10n.t('Enter server password')
+              : vscode.l10n.t('Server request: {0}', prompt.slice(0, 500)),
             password: true,
             ignoreFocusOut: true,
             validateInput: (v) =>
@@ -188,22 +191,44 @@ class Runtime implements vscode.Disposable {
   private trust(
     t: Target,
     prompt: string,
+    fingerprint: string | undefined,
     signal?: AbortSignal,
   ): Promise<Reply> {
     return this.serial(async () => {
       if (!this.enabled || signal?.aborted) return { canceled: true };
-      const yes = await vscode.window.showWarningMessage(
-        vscode.l10n.t('OpenSSH server identity · {0}', label(t)),
-        {
-          modal: true,
-          detail:
-            prompt.slice(0, 8192) +
-            '\n\n' +
+      const identity = parseHostIdentity(prompt, fingerprint);
+      const server = vscode.l10n.t('Server: {0}', serverAddress(t));
+      const detail = identity
+        ? [
+            vscode.l10n.t('This server is not yet trusted on this device.'),
+            '',
+            server,
+            vscode.l10n.t('Key type: {0}', identity.keyType),
+            vscode.l10n.t('Fingerprint:\n{0}', identity.fingerprint),
+            '',
             vscode.l10n.t(
-              'Verify this fingerprint through a trusted channel. Cancel to reject the connection.',
+              'Compare this fingerprint with one provided by your administrator. Continue only if they match.',
             ),
-        },
-        vscode.l10n.t('Verified — Trust This Server'),
+            vscode.l10n.t('If you are unsure, cancel the connection.'),
+          ].join('\n')
+        : [
+            server,
+            '',
+            vscode.l10n.t(
+              'Original OpenSSH request:\n{0}',
+              prompt.slice(0, 8192),
+            ),
+            '',
+            vscode.l10n.t(
+              'Review the server request before continuing. Cancel if you are unsure.',
+            ),
+          ].join('\n');
+      const yes = await vscode.window.showWarningMessage(
+        identity
+          ? vscode.l10n.t('Trust this server?')
+          : vscode.l10n.t('Review the SSH confirmation'),
+        { modal: true, detail },
+        vscode.l10n.t('Trust and Connect'),
       );
       return yes && this.enabled && !signal?.aborted
         ? { value: 'yes' }

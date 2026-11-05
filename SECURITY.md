@@ -20,7 +20,7 @@ Across windows, a user-restricted coordinator deduplicates only in-flight reques
 
 ## Server identity and success detection
 
-OpenSSH remains responsible for configuration expansion, crypto, host-key checks, network transport and forwarding. Unknown hosts require a user confirmation showing OpenSSH's fingerprint prompt. Changed keys are not auto-accepted. A saved credential with a different verified fingerprint is never auto-filled. ProxyJump/ProxyCommand and non-strict host-checking configurations are passthrough in this version.
+OpenSSH remains responsible for configuration expansion, crypto, host-key checks, network transport and forwarding. Unknown hosts require a user confirmation showing the server address, key type, and original fingerprint. Structured display requires the prompt fingerprint to match the active SSH session; unrecognized or mismatched requests show the original OpenSSH text. Changed keys are not auto-accepted. A saved credential with a different verified fingerprint is never auto-filled. ProxyJump/ProxyCommand and non-strict host-checking configurations are passthrough in this version.
 
 The wrapper does not infer authentication success from SSH exit status: a remote command can fail after successful authentication. Nor does it trust an arbitrary stderr substring. It requires the selected local success-packet diagnostic and the selected authenticated-to callsite, with the active child's PID and host-verification state.
 
@@ -46,4 +46,4 @@ No production credentials were requested or used to develop this version. Report
 
 Do not include secrets or raw authentication traffic in a public issue. If the repository has private vulnerability reporting enabled, use its Security tab to submit a private advisory. Otherwise ask the maintainer for a private reporting channel without posting exploit details or credentials. This preview has no separate security contact or response-time guarantee.
 
-Review scope and incomplete real-host validation in the [latest local report](docs/testing/2026-11-05.md).
+Review scope and incomplete real-host validation in the [latest local report](docs/testing/2026-11-06.md).

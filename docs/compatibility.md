@@ -52,4 +52,4 @@ Managed connections suppress pre-authentication server banners to prevent spoofe
 
 The target comes from real OpenSSH `-G` output, preserving SSH config precedence, including duplicate Host entries. Matching uses a lowercased hostname, exact port, case-sensitive username, and verified SHA256 host-key fingerprint. Different DNS names are not intentionally merged; a different host-key algorithm can conservatively require re-entry.
 
-Window coordination is limited to the current Windows account and the same VS Code storage context. Profiles and separate user-data directories do not share credentials. See the [test report](testing/2026-11-05.md) for what has actually been exercised.
+Window coordination is limited to the current Windows account and the same VS Code storage context. Profiles and separate user-data directories do not share credentials. See the [test report](testing/2026-11-06.md) for what has actually been exercised.

@@ -114,7 +114,7 @@ const api = {
     showWarningMessage: async (text, options, ...items) => {
       messages.push(text);
       ui.warnings.push({ text, options, items });
-      if (text.startsWith('OpenSSH')) trustCount++;
+      if (options?.modal && typeof options.detail === 'string') trustCount++;
       return items[0];
     },
     showErrorMessage: async (text) => {
@@ -307,6 +307,10 @@ try {
           : 'Enter the server password. It will only be saved after successful authentication.',
       );
       assert.equal(
+        input.placeHolder,
+        chinese ? '请输入服务器密码' : 'Enter server password',
+      );
+      assert.equal(
         input.validateInput(''),
         chinese ? '请输入内容' : 'Enter a value.',
       );
@@ -327,16 +331,35 @@ try {
         chinese ? '仅本次使用' : 'Use Once',
       );
       assert.ok(!persistence.options.title.includes('{0}'));
-      assert.ok(
-        ui.warnings[0].text.startsWith(
-          chinese ? 'OpenSSH 服务器身份确认' : 'OpenSSH server identity',
-        ),
+      const confirmation = ui.warnings[0];
+      assert.equal(
+        confirmation.text,
+        chinese ? '是否信任此服务器？' : 'Trust this server?',
       );
       assert.equal(
-        ui.warnings[0].items[0],
-        chinese ? '已核实，信任此服务器' : 'Verified — Trust This Server',
+        confirmation.items[0],
+        chinese ? '信任并继续连接' : 'Trust and Connect',
       );
-      assert.ok(ui.warnings[0].options.detail.includes('SHA256:'));
+      assert.ok(
+        confirmation.options.detail.includes(
+          (chinese ? '服务器：' : 'Server: ') + ready.address,
+        ),
+      );
+      assert.ok(
+        confirmation.options.detail.includes(
+          chinese ? '密钥类型：ED25519' : 'Key type: ED25519',
+        ),
+      );
+      assert.ok(
+        confirmation.options.detail.includes(
+          (chinese ? '指纹：\n' : 'Fingerprint:\n') + ready.fingerprint,
+        ),
+      );
+      assert.ok(
+        !confirmation.options.detail.includes('The authenticity of host'),
+      );
+      assert.ok(!confirmation.options.detail.includes('yes/no/[fingerprint]'));
+      assert.ok(!confirmation.options.detail.includes('fixture@'));
       assert.ok(
         inspection[0].detail.startsWith(
           chinese ? '成功认证时间：' : 'Successfully authenticated:',
@@ -349,6 +372,77 @@ try {
         ),
       );
       assert.ok(!messages.some((m) => m.includes(password)));
+    },
+  );
+  await check(
+    'manual authentication separates server prompt from localized help and never saves',
+    async () => {
+      const manualFixture = spawn(
+        path.join(root, 'bin', 'testserver.exe'),
+        [],
+        {
+          windowsHide: true,
+          stdio: 'pipe',
+        },
+      );
+      children.push(manualFixture);
+      manualFixture.stderr.resume();
+      let manualReady;
+      createInterface({ input: manualFixture.stdout }).on('line', (line) => {
+        const message = JSON.parse(line);
+        if (message.type === 'ready') manualReady = message;
+      });
+      manualFixture.stdin.write(
+        JSON.stringify({ password, keyboardInteractive: true }) + '\n',
+      );
+      for (let i = 0; !manualReady && i < 250; i++) await sleep(20);
+      assert.ok(manualReady);
+      const manualArgs = [...args];
+      manualArgs[manualArgs.indexOf('-p') + 1] = manualReady.address
+        .split(':')
+        .at(-1);
+      manualArgs[manualArgs.indexOf('PreferredAuthentications=password')] =
+        'PreferredAuthentications=keyboard-interactive';
+      const promptsBefore = inputCount;
+      const choicesBefore = ui.choices.length;
+      const credentialsBefore = [...secrets.keys()].filter((k) =>
+        k.startsWith('credential.'),
+      ).length;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await run(bridge, manualArgs);
+        assert.equal(response.code, 0);
+        assert.equal(response.stdout, 'fixture-ok\n');
+        const input = ui.inputs.at(-1);
+        assert.equal(
+          input.prompt,
+          locale === 'zh-cn'
+            ? '请完成服务器验证，本次输入不会保存。'
+            : 'Complete the server authentication step. This response will not be saved.',
+        );
+        assert.ok(
+          input.placeHolder.startsWith(
+            locale === 'zh-cn' ? '服务器提示：' : 'Server request: ',
+          ),
+        );
+        assert.ok(input.placeHolder.includes('fixture@127.0.0.1'));
+        assert.ok(input.placeHolder.includes('Password:'));
+        assert.ok(
+          !input.prompt.includes('fixture@') &&
+            !input.prompt.includes('Password:'),
+        );
+        assert.equal(input.password, true);
+      }
+      assert.equal(inputCount, promptsBefore + 2);
+      assert.equal(
+        ui.choices.length,
+        choicesBefore,
+        'Manual input must not offer persistence',
+      );
+      assert.equal(
+        [...secrets.keys()].filter((k) => k.startsWith('credential.')).length,
+        credentialsBefore,
+      );
+      manualFixture.stdin.end();
     },
   );
   await check(

@@ -16,7 +16,7 @@
 
 A Windows x64 companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.1.1.** Local OpenSSH loopback tests pass. Real VS Code UI, SecretStorage persistence across restarts, and the complete Remote-SSH server installation still need acceptance testing. This preview supports one exact OpenSSH build. Read the [compatibility requirements](docs/compatibility.md) and [test report](docs/testing/2026-11-05.md) before installing.
+> **Preview 0.1.3.** Local OpenSSH loopback tests pass. Real VS Code UI, SecretStorage persistence across restarts, and the complete Remote-SSH server installation still need acceptance testing. This preview supports one exact OpenSSH build. Read the [compatibility requirements](docs/compatibility.md) and [test report](docs/testing/2026-11-06.md) before installing.
 
 ## Features
 
@@ -41,7 +41,7 @@ See [supported builds and fallback behavior](docs/compatibility.md). The native 
 
 ### Install and connect
 
-1. Build the VSIX from source, or use the locally supplied `remote-ssh-password-memory-0.1.1-win32-x64.vsix`.
+1. Build the VSIX from source, or use the locally supplied `remote-ssh-password-memory-0.1.3-win32-x64.vsix`.
 2. In the local Extensions view, choose **Install from VSIX…** and select that file. Ensure Microsoft Remote-SSH is installed.
 3. Run **SSH Password Memory: Enable** from the Command Palette and confirm the two setting changes.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
@@ -51,7 +51,7 @@ See [supported builds and fallback behavior](docs/compatibility.md). The native 
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.1.1-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-0.1.3-win32-x64.vsix
 ```
 
 Installation does not enable interception automatically. This preview is distributed as a local VSIX; it has no Marketplace listing, telemetry, or update service.
@@ -74,7 +74,7 @@ Command IDs remain stable across languages; see the [contributor guide](CONTRIBU
 
 The extension uses VS Code's [native localization](https://github.com/microsoft/vscode-l10n). English is the default; **Simplified Chinese (`zh-cn`)** is included. Use **Configure Display Language** and restart VS Code to switch. Command titles, input boxes, choices, confirmations, and diagnostics follow that language.
 
-OpenSSH's original authentication prompts and fingerprints are kept verbatim. There is no separate extension language setting. The main repository documentation is in English; a [Chinese quick-start guide](docs/README.zh-CN.md) is available separately.
+Authentication challenges and fingerprint values are kept verbatim. Standard server-trust requests use localized server, key-type, and fingerprint details; unrecognized requests retain the original OpenSSH text. There is no separate extension language setting. The main repository documentation is in English; a [Chinese quick-start guide](docs/README.zh-CN.md) is available separately.
 
 ## Settings and removal
 
@@ -103,7 +103,7 @@ Only clearly recognized, fixed-password authentication can be remembered. Other 
 | [Troubleshooting](docs/troubleshooting.md)             | Diagnostics, password failures, disable/uninstall, and manual recovery. |
 | [Architecture](docs/architecture.md)                   | Extension, broker, SSH/SCP, and ASKPASS responsibilities.               |
 | [Testing](docs/testing.md)                             | Test layers, commands, and manual acceptance checklist.                 |
-| [Latest local test report](docs/testing/2026-11-05.md) | Reproducible evidence and remaining gaps.                               |
+| [Latest local test report](docs/testing/2026-11-06.md) | Reproducible evidence and remaining gaps.                               |
 | [Contributing](CONTRIBUTING.md)                        | Development, translations, repository layout, and release checklist.    |
 | [Changelog](CHANGELOG.md)                              | Version history.                                                        |
 
