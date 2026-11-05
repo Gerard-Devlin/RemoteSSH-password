@@ -1,0 +1,11 @@
+node_modules/
+dist/
+bin/
+artifacts/
+.test-runtime/
+.test-host/
+*.log
+*.vsix
+.env
+.env.*
+!.env.example

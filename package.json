@@ -1,0 +1,107 @@
+{
+  "name": "remote-ssh-password-memory",
+  "displayName": "Remote SSH Password Memory",
+  "description": "%extension.description%",
+  "version": "0.1.1",
+  "publisher": "local-tools",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.144.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "extensionDependencies": [
+    "ms-vscode-remote.remote-ssh"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onResolveRemoteAuthority:ssh-remote"
+  ],
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "sshPasswordMemory.enable",
+        "title": "%command.enable%",
+        "category": "%command.category%"
+      },
+      {
+        "command": "sshPasswordMemory.disable",
+        "title": "%command.disable%",
+        "category": "%command.category%"
+      },
+      {
+        "command": "sshPasswordMemory.manage",
+        "title": "%command.manage%",
+        "category": "%command.category%"
+      },
+      {
+        "command": "sshPasswordMemory.forget",
+        "title": "%command.forget%",
+        "category": "%command.category%"
+      },
+      {
+        "command": "sshPasswordMemory.diagnostics",
+        "title": "%command.diagnostics%",
+        "category": "%command.category%"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "build:native": "node scripts/build-native.mjs",
+    "build": "npm run compile && npm run build:native",
+    "test:ts": "node --test dist/test/*.test.js",
+    "test:native": "cd native && go test ./...",
+    "test": "npm run compile && npm run test:ts && npm run test:localization && npm run test:docs && npm run test:native",
+    "package": "npm run build && node scripts/package.mjs",
+    "test:integration": "npm run build && npm run build:fixture && node scripts/integration.mjs",
+    "test:race": "cd native && go test -race ./...",
+    "build:fixture": "cd native/testserver && go build -o ../../bin/testserver.exe .",
+    "test:host": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/host-tests.ps1",
+    "format": "prettier --write . && cd native && go fmt ./... && cd testserver && go fmt ./...",
+    "test:extension": "npm run build && npm run build:fixture && node scripts/extension-tests.mjs en && node scripts/extension-tests.mjs zh-cn",
+    "test:localization": "node --test scripts/localization.test.mjs",
+    "test:docs": "node --test scripts/docs.test.mjs",
+    "verify:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-package.ps1",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.144.0",
+    "@vscode/vsce": "^4.1.0",
+    "typescript": "^5.9.0",
+    "prettier": "^3.6.2"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  },
+  "l10n": "./l10n",
+  "keywords": [
+    "ssh",
+    "remote-ssh",
+    "password",
+    "windows",
+    "secretstorage"
+  ],
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gerard-Devlin/RemoteSSH-password.git"
+  },
+  "homepage": "https://github.com/Gerard-Devlin/RemoteSSH-password#readme",
+  "bugs": {
+    "url": "https://github.com/Gerard-Devlin/RemoteSSH-password/issues"
+  }
+}

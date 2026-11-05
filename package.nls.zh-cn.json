@@ -1,0 +1,9 @@
+{
+  "extension.description": "使用 VS Code SecretStorage 在本机记住 SSH 密码。适用于 Windows x64 的 Microsoft Remote-SSH 辅助扩展（预览版）。",
+  "command.category": "SSH 密码记忆",
+  "command.enable": "启用",
+  "command.disable": "关闭并恢复设置",
+  "command.manage": "管理已保存凭据",
+  "command.forget": "忘记密码",
+  "command.diagnostics": "查看诊断"
+}

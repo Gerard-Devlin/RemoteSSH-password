@@ -1,0 +1,67 @@
+name: Windows checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.1'
+          cache-dependency-path: |
+            native/go.sum
+            native/testserver/go.sum
+      - run: npm ci
+      - name: Formatting, compile, unit, localization, and documentation checks
+        run: npm run check
+      - name: Native static analysis
+        working-directory: native
+        run: go vet ./...
+      - name: Check loopback test compatibility
+        id: ssh
+        run: node scripts/ci-compatibility.mjs
+      - name: Real OpenSSH loopback integration
+        if: steps.ssh.outputs.supported == 'true'
+        run: npm run test:integration
+      - name: English and Chinese extension-entry integration (mocked VS Code API)
+        if: steps.ssh.outputs.supported == 'true'
+        run: npm run test:extension
+      - name: Record unavailable integration coverage
+        if: steps.ssh.outputs.supported != 'true'
+        run: Write-Output 'NOT RUN - loopback and extension-entry integration require the pinned system OpenSSH build. See the job summary.'
+      - name: Build Windows x64 package
+        run: npm run package
+      - name: Verify package inventory, hashes, and native architecture
+        run: npm run verify:package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: remote-ssh-password-memory-win32-x64
+          path: |
+            artifacts/*.vsix
+            artifacts/integration-results.json
+            artifacts/extension-results-en.json
+            artifacts/extension-results-zh-cn.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,46 @@
+name: Bug report
+description: Report unexpected extension behavior with sanitized reproduction steps.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the compatibility and recovery guides first. Never include passwords, raw IPC dumps, or unredacted SSH configuration. Use the security policy for sensitive reports.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Extension, VS Code, Remote-SSH, Windows architecture, and real OpenSSH version.
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: VS Code display language
+      options:
+        - English
+        - Simplified Chinese (zh-cn)
+        - Another language (English fallback)
+    validations:
+      required: true
+  - type: input
+    id: ssh-hash
+    attributes:
+      label: OpenSSH SHA256
+      description: Hash of the real ssh.exe, not the extension bridge. Unsupported builds use ordinary authentication.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Use a controlled fixture or sanitized host alias. State expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Remove private hostnames, usernames, and local paths. Do not attach passwords or authentication traffic.
+  - type: textarea
+    id: ordinary
+    attributes:
+      label: Ordinary Remote-SSH behavior
+      description: Does the same problem occur after Disable and Restore Settings?

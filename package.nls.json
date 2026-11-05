@@ -1,0 +1,9 @@
+{
+  "extension.description": "Remember SSH passwords locally with VS Code SecretStorage. A Windows x64 companion for Microsoft Remote-SSH (preview).",
+  "command.category": "SSH Password Memory",
+  "command.enable": "Enable",
+  "command.disable": "Disable and Restore Settings",
+  "command.manage": "Manage Saved Credentials",
+  "command.forget": "Forget Password",
+  "command.diagnostics": "Show Diagnostics"
+}

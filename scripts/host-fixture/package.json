@@ -1,0 +1,15 @@
+{
+  "name": "sshpm-host-fixture",
+  "publisher": "local-tests",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.144.0"
+  },
+  "main": "main.cjs",
+  "activationEvents": [
+    "*"
+  ],
+  "extensionKind": [
+    "ui"
+  ]
+}

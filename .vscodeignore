@@ -1,0 +1,22 @@
+src/**
+native/**
+scripts/**
+node_modules/**
+.test-runtime/**
+.test-host/**
+artifacts/**
+.github/**
+.vscode/**
+**/*.map
+dist/test/**
+bin/testserver.exe
+tsconfig.json
+package-lock.json
+.gitignore
+.gitattributes
+.editorconfig
+.prettierrc.json
+.prettierignore
+
+# Keep the contributor link in the bundled README usable.
+!CONTRIBUTING.md
