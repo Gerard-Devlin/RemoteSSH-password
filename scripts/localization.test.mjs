@@ -103,7 +103,7 @@ test('raw manual challenges and unrecognized SSH requests are not translated', (
   const manual = calls.find(
     (c) =>
       c.arguments[0].text ===
-      'Complete the server authentication step. This response will not be saved.',
+      'This response is used for this connection only and will not be saved.',
   );
   assert.equal(
     manual.arguments.length,
@@ -113,10 +113,14 @@ test('raw manual challenges and unrecognized SSH requests are not translated', (
   let placeholder;
   function findPlaceholder(node) {
     if (
-      ts.isPropertyAssignment(node) &&
-      node.name.getText(ast) === 'placeHolder'
-    )
-      placeholder = node.initializer;
+      ts.isCallExpression(node) &&
+      node.expression.getText(ast) === 'vscode.window.showInputBox'
+    ) {
+      const property = node.arguments[0].properties.find(
+        (p) => p.name?.getText(ast) === 'placeHolder',
+      );
+      placeholder = property.initializer;
+    }
     ts.forEachChild(node, findPlaceholder);
   }
   findPlaceholder(ast);
@@ -124,7 +128,10 @@ test('raw manual challenges and unrecognized SSH requests are not translated', (
   assert.equal(placeholder.whenTrue.expression.getText(ast), 'vscode.l10n.t');
   assert.equal(placeholder.whenTrue.arguments[0].text, 'Enter server password');
   assert.equal(placeholder.whenFalse.expression.getText(ast), 'vscode.l10n.t');
-  assert.equal(placeholder.whenFalse.arguments[0].text, 'Server request: {0}');
+  assert.equal(
+    placeholder.whenFalse.arguments[0].text,
+    'Authentication request: {0}',
+  );
   assert.equal(
     placeholder.whenFalse.arguments[1].getText(ast),
     'prompt.slice(0, 500)',

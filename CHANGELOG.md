@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 — 2026-11-06
+
+- Review and unify every extension-owned English/Chinese dialog, input hint, button, password menu, error, and diagnostic message.
+- Split enable and deletion confirmations into short titles and readable details; clarify that deleting a saved password changes only the local copy.
+- Rename credential commands to Manage Saved Passwords and Delete Saved Password while preserving their command IDs. Show readable sign-in dates.
+- Add actionable error dialogs and localized native SSH-path errors, with English fallback.
+- Cover setup cancellation, unsupported SSH, storage errors, password retry, deletion cancellation, and native errors in bilingual extension-entry tests.
+
 ## 0.1.3 — 2026-11-06
 
 - Replace the standard raw OpenSSH host-trust transcript with a concise English/Chinese dialog: server address, key type, exact fingerprint, and an explicit Trust and Connect button.

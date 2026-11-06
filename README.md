@@ -16,7 +16,7 @@
 
 A Windows x64 companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.1.3.** Local OpenSSH loopback tests pass. Real VS Code UI, SecretStorage persistence across restarts, and the complete Remote-SSH server installation still need acceptance testing. This preview supports one exact OpenSSH build. Read the [compatibility requirements](docs/compatibility.md) and [test report](docs/testing/2026-11-06.md) before installing.
+> **Preview 0.1.4.** Local OpenSSH loopback tests pass. Real VS Code UI, SecretStorage persistence across restarts, and the complete Remote-SSH server installation still need acceptance testing. This preview supports one exact OpenSSH build. Read the [compatibility requirements](docs/compatibility.md) and [test report](docs/testing/2026-11-06.md) before installing.
 
 ## Features
 
@@ -41,32 +41,32 @@ See [supported builds and fallback behavior](docs/compatibility.md). The native 
 
 ### Install and connect
 
-1. Build the VSIX from source, or use the locally supplied `remote-ssh-password-memory-0.1.3-win32-x64.vsix`.
+1. Download a Windows x64 package from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases), or build from source. The current package is `remote-ssh-password-memory-0.1.4-win32-x64.vsix`.
 2. In the local Extensions view, choose **Install from VSIX…** and select that file. Ensure Microsoft Remote-SSH is installed.
 3. Run **SSH Password Memory: Enable** from the Command Palette and confirm the two setting changes.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
-6. After successful authentication, use **Manage Saved Credentials** to inspect the destination and fingerprint. Passwords are never displayed.
+6. After successful authentication, use **Manage Saved Passwords** to inspect the destination and fingerprint. Passwords are never displayed.
 
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.1.3-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-0.1.4-win32-x64.vsix
 ```
 
-Installation does not enable interception automatically. This preview is distributed as a local VSIX; it has no Marketplace listing, telemetry, or update service.
+Installing the extension does not enable password memory. Preview VSIX packages are available from GitHub Releases; there is no Marketplace listing, telemetry, or automatic update service.
 
 ## Commands
 
 Open the Command Palette with **Ctrl+Shift+P**. Commands appear under **SSH Password Memory**, with localized titles when Simplified Chinese is selected.
 
-| Command                      | Purpose                                                                 |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| Enable                       | Review and enable password memory.                                      |
-| Manage Saved Credentials     | List saved destinations and fingerprints; select one to forget.         |
-| Forget Password              | Remove a selected saved credential.                                     |
-| Disable and Restore Settings | Stop password memory and restore settings still owned by the extension. |
-| Show Diagnostics             | Show platform, bridge path, and broker status without passwords.        |
+| Command                          | Purpose                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| Enable                           | Review and enable password memory.                                                 |
+| Manage Saved Passwords           | List saved destinations and fingerprints; select one to delete its saved password. |
+| Delete Saved Password            | Remove a selected saved credential.                                                |
+| Disable and Restore SSH Settings | Stop password memory and restore settings still owned by the extension.            |
+| Show Diagnostics                 | Show platform, local SSH helper path, and service status without passwords.        |
 
 Command IDs remain stable across languages; see the [contributor guide](CONTRIBUTING.md).
 
@@ -87,7 +87,7 @@ Enabling writes exactly two user settings:
 
 Original values are recorded in local state and a password-free `recovery.json`. Other settings and your SSH config remain intact.
 
-Before uninstalling, forget credentials you want removed, then run **Disable and Restore Settings**. Disabling preserves saved credentials. Direct uninstallation relies on the retained bridge for ordinary OpenSSH fallback; manual deletion of global storage can break that path. Follow the [recovery instructions](docs/troubleshooting.md#restore-remote-ssh-after-removal) if necessary.
+Before uninstalling, forget credentials you want removed, then run **Disable and Restore SSH Settings**. Disabling preserves saved credentials. Direct uninstallation relies on the retained bridge for ordinary OpenSSH fallback; manual deletion of global storage can break that path. Follow the [recovery instructions](docs/troubleshooting.md#restore-remote-ssh-after-removal) if necessary.
 
 ## Security and scope
 
@@ -105,6 +105,7 @@ Only clearly recognized, fixed-password authentication can be remembered. Other 
 | [Testing](docs/testing.md)                             | Test layers, commands, and manual acceptance checklist.                 |
 | [Latest local test report](docs/testing/2026-11-06.md) | Reproducible evidence and remaining gaps.                               |
 | [Contributing](CONTRIBUTING.md)                        | Development, translations, repository layout, and release checklist.    |
+| [UI text guide](docs/ui-text.md)                       | Reviewed screens, shared terms, and localization conventions.           |
 | [Changelog](CHANGELOG.md)                              | Version history.                                                        |
 
 ## Development

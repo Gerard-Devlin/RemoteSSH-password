@@ -223,5 +223,7 @@ func (r *RPC) request(m Message, timeout time.Duration) (Message, error) {
 		return Message{}, errors.New("authentication request timed out")
 	}
 }
-func (r *RPC) close()    { r.c.Close() }
-func safeError(s string) { fmt.Fprintln(os.Stderr, "SSH Password Memory: "+s) }
+func (r *RPC) close() { r.c.Close() }
+func safeError(code string) {
+	fmt.Fprintln(os.Stderr, nativeErrorMessage(code, os.Getenv("VSCODE_NLS_CONFIG")))
+}

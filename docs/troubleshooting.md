@@ -2,6 +2,10 @@
 
 [Back to README](../README.md)
 
+## Update from an earlier preview
+
+Install the new VSIX and reload the local VS Code window. If password memory was already enabled, run **Disable and Restore SSH Settings**, then **Enable** once to refresh the deployed local SSH helpers. Saved passwords are retained.
+
 ## Start with diagnostics
 
 Run **SSH Password Memory: Show Diagnostics** from a local window. Inspect the platform, enabled state, bridge path, and broker status. The bridge directory’s password-free `bridge.json` records the real SSH path and its expected hash. Diagnostics contain metadata, not passwords. Review hostnames, usernames, and local paths before sharing them.
@@ -25,14 +29,14 @@ This is the manual-authentication path. The original server request appears as t
 
 ## Cancel or forget
 
-Cancel the input to stop that authentication attempt. To remove a saved value, run **Forget Password** or select an entry in **Manage Saved Credentials**. The list displays metadata only.
+Cancel the input to stop that authentication attempt. To remove a saved value, run **Delete Saved Password** or select an entry in **Manage Saved Passwords**. The list displays metadata only.
 
 Forget revokes pending saves so a delayed successful connection cannot silently restore an old credential. An answer already delivered to OpenSSH cannot be recalled; cancel outstanding connections as well when immediate removal is required.
 
 ## Disable before uninstalling
 
 1. Forget any credentials you want deleted.
-2. Run **SSH Password Memory: Disable and Restore Settings**.
+2. Run **SSH Password Memory: Disable and Restore SSH Settings**.
 3. Disable or uninstall the extension.
 
 Disabling preserves saved credentials. Uninstallation is not a credential-erasure guarantee. Settings are restored only if they still match values installed by the extension; your later edits are retained.

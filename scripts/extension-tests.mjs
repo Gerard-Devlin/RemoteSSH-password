@@ -23,7 +23,19 @@ const translate = (message, ...args) =>
   (translations[message] ?? message).replace(/\{(\d+)\}/g, (_, i) =>
     String(args[Number(i)]),
   );
-const ui = { inputs: [], choices: [], warnings: [] };
+const ui = {
+  inputs: [],
+  choices: [],
+  warnings: [],
+  information: [],
+  errors: [],
+  channels: [],
+};
+let acceptEnable = true,
+  acceptDelete = true,
+  allowErrors = false,
+  chooseDiagnostics = false,
+  failSecretReads = false;
 let selectCredential = false;
 const root = process.cwd(),
   tmp = path.join(root, '.test-runtime', 'extension-' + randomUUID());
@@ -48,6 +60,7 @@ let inputCount = 0,
   trustCount = 0,
   inspection;
 const password = 'extension-test-' + randomUUID() + '中文!"&$';
+let inputAnswer = password;
 class CancellationTokenSource {
   constructor() {
     this.token = { isCancellationRequested: false };
@@ -59,6 +72,7 @@ class CancellationTokenSource {
 }
 const api = {
   version: '1.144.0',
+  env: { language: locale },
   l10n: { t: translate },
   ConfigurationTarget: { Global: 1 },
   CancellationTokenSource,
@@ -98,7 +112,7 @@ const api = {
       ui.inputs.push(options);
       assert.equal(options.password, true);
       inputCount++;
-      return password;
+      return inputAnswer;
     },
     showQuickPick: async (items, options) => {
       ui.choices.push({ items, options });
@@ -109,16 +123,21 @@ const api = {
     },
     showInformationMessage: async (text, options, ...items) => {
       messages.push(text);
-      return options?.modal ? items[0] : undefined;
+      ui.information.push({ text, options, items });
+      return options?.modal && acceptEnable ? items[0] : undefined;
     },
     showWarningMessage: async (text, options, ...items) => {
       messages.push(text);
       ui.warnings.push({ text, options, items });
+      if (items.includes(translate('Delete Password')))
+        return acceptDelete ? items[0] : undefined;
       if (options?.modal && typeof options.detail === 'string') trustCount++;
       return items[0];
     },
-    showErrorMessage: async (text) => {
-      throw new Error(text);
+    showErrorMessage: async (text, options, ...items) => {
+      ui.errors.push({ text, options, items });
+      if (!allowErrors) throw new Error(text);
+      return chooseDiagnostics ? items[0] : undefined;
     },
   },
 };
@@ -136,7 +155,10 @@ const context = {
       secrets.delete(k);
       for (const f of secretListeners) f({ key: k });
     },
-    keys: async () => [...secrets.keys()],
+    keys: async () => {
+      if (failSecretReads) throw new Error('synthetic storage failure');
+      return [...secrets.keys()];
+    },
     onDidChange: (f) => {
       secretListeners.add(f);
       return { dispose: () => secretListeners.delete(f) };
@@ -172,8 +194,12 @@ const check = async (name, fn) => {
   console.log('PASS ' + name);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function run(exe, args) {
-  const p = spawn(exe, args, { windowsHide: true, stdio: 'pipe' });
+async function run(exe, args, extraEnv = {}) {
+  const p = spawn(exe, args, {
+    windowsHide: true,
+    stdio: 'pipe',
+    env: { ...process.env, ...extraEnv },
+  });
   children.push(p);
   let stdout = '',
     stderr = '';
@@ -206,6 +232,71 @@ try {
     },
   );
   await check(
+    'setup consent, unsupported SSH, and storage errors are localized and leave settings intact',
+    async () => {
+      acceptEnable = false;
+      await commands.get('sshPasswordMemory.enable')();
+      assert.deepEqual(settings, original);
+      const consent = ui.information.at(-1);
+      assert.equal(
+        consent.text,
+        locale === 'zh-cn'
+          ? '启用 SSH 密码记忆？'
+          : 'Enable SSH password memory?',
+      );
+      assert.ok(consent.options.detail.includes('remote.SSH.path'));
+      assert.ok(consent.options.detail.includes('remote.SSH.useLocalServer'));
+      assert.ok(consent.options.detail.includes('\n\n'));
+      acceptEnable = true;
+
+      const missing = path.join(tmp, 'missing-ssh.exe');
+      settings.set('path', missing);
+      const before = new Map(settings);
+      allowErrors = true;
+      chooseDiagnostics = true;
+      try {
+        await commands.get('sshPasswordMemory.enable')();
+        assert.deepEqual(settings, before);
+        const failure = ui.errors.at(-1);
+        assert.equal(
+          failure.text,
+          locale === 'zh-cn'
+            ? '无法启用密码记忆'
+            : 'Could not enable password memory',
+        );
+        assert.ok(failure.options.detail.includes(missing));
+        assert.ok(
+          failure.options.detail.includes(
+            locale === 'zh-cn'
+              ? '未启用密码记忆。'
+              : 'Password memory was not enabled.',
+          ),
+        );
+        assert.equal(
+          failure.items[0].title,
+          locale === 'zh-cn' ? '查看诊断' : 'Show Diagnostics',
+        );
+
+        failSecretReads = true;
+        await commands.get('sshPasswordMemory.manage')();
+        const storage = ui.errors.at(-1);
+        assert.equal(
+          storage.text,
+          locale === 'zh-cn' ? '操作未完成' : 'Could not complete this action',
+        );
+        assert.ok(
+          !JSON.stringify(storage).includes('synthetic storage failure'),
+        );
+      } finally {
+        failSecretReads = false;
+        allowErrors = false;
+        chooseDiagnostics = false;
+        settings.set('path', original.get('path'));
+      }
+      assert.deepEqual(settings, original);
+    },
+  );
+  await check(
     'confirmed enable journals originals and starts the actual broker',
     async () => {
       await commands.get('sshPasswordMemory.enable')();
@@ -223,16 +314,39 @@ try {
       assert.equal(journal.original.useLocalServer, false);
     },
   );
+  await check(
+    'enabling again reports the current state without repeating consent',
+    async () => {
+      const before = new Map(settings);
+      const confirmations = ui.information.filter(
+        (m) => m.options?.modal,
+      ).length;
+      await commands.get('sshPasswordMemory.enable')();
+      assert.deepEqual(settings, before);
+      assert.equal(
+        ui.information.filter((m) => m.options?.modal).length,
+        confirmations,
+      );
+      assert.equal(
+        messages.at(-1),
+        locale === 'zh-cn'
+          ? '密码记忆已启用。'
+          : 'Password memory is already on.',
+      );
+    },
+  );
   const fixture = spawn(path.join(root, 'bin', 'testserver.exe'), [], {
     windowsHide: true,
     stdio: 'pipe',
   });
   children.push(fixture);
   let ready;
+  let fixtureUpdates = 0;
   fixture.stderr.resume();
   createInterface({ input: fixture.stdout }).on('line', (line) => {
     const m = JSON.parse(line);
     if (m.type === 'ready') ready = m;
+    if (m.type === 'updated') fixtureUpdates++;
   });
   fixture.stdin.write(JSON.stringify({ password }) + '\n');
   for (let i = 0; !ready && i < 250; i++) await sleep(20);
@@ -280,6 +394,34 @@ try {
     },
   );
   await check(
+    'rejected-password guidance asks for another attempt without implying a password reset',
+    async () => {
+      const replacement = 'replacement-' + randomUUID() + '-中文';
+      async function setFixturePassword(value) {
+        const before = fixtureUpdates;
+        fixture.stdin.write(JSON.stringify({ password: value }) + '\n');
+        for (let i = 0; fixtureUpdates === before && i < 250; i++)
+          await sleep(20);
+        assert.ok(fixtureUpdates > before);
+      }
+      inputAnswer = replacement;
+      await setFixturePassword(replacement);
+      const before = inputCount;
+      assert.equal((await run(bridge, args)).code, 0);
+      assert.equal(inputCount, before + 1);
+      assert.equal(
+        ui.inputs.at(-1).prompt,
+        locale === 'zh-cn'
+          ? '服务器未接受该密码，请重新输入。'
+          : 'The server rejected the password. Try again.',
+      );
+      assert.ok(!messages.join('\n').includes(replacement));
+      inputAnswer = password;
+      await setFixturePassword(password);
+      assert.equal((await run(bridge, args)).code, 0);
+    },
+  );
+  await check(
     'credential management lists metadata without revealing password',
     async () => {
       await commands.get('sshPasswordMemory.manage')();
@@ -295,16 +437,14 @@ try {
       const input = ui.inputs[0];
       assert.ok(
         input.title.startsWith(
-          chinese
-            ? 'SSH 密码记忆 · fixture@'
-            : 'SSH Password Memory · fixture@',
+          chinese ? 'SSH 密码 · fixture@' : 'SSH password · fixture@',
         ),
       );
       assert.equal(
         input.prompt,
         chinese
-          ? '请输入服务器固定密码。认证成功后才会保存。'
-          : 'Enter the server password. It will only be saved after successful authentication.',
+          ? '输入后可选择是否记住密码。'
+          : 'You can choose whether to remember this password in the next step.',
       );
       assert.equal(
         input.placeHolder,
@@ -312,14 +452,26 @@ try {
       );
       assert.equal(
         input.validateInput(''),
-        chinese ? '请输入内容' : 'Enter a value.',
+        chinese ? '请输入内容后再继续。' : 'Enter a response to continue.',
       );
       assert.equal(input.validateInput('safe中文!&'), undefined);
       assert.equal(
         input.validateInput('bad\nvalue'),
         chinese
-          ? '不支持换行、NUL 或超过 8192 字节的回答'
-          : 'Newlines, NUL characters, and answers longer than 8192 bytes are not supported.',
+          ? '输入内容不能包含换行或空字符。'
+          : 'Line breaks and null characters are not allowed.',
+      );
+      assert.equal(
+        input.validateInput('汉'.repeat(3000)),
+        chinese
+          ? '输入内容过长，最多支持 8192 字节。'
+          : 'The input is too long. Use no more than 8192 bytes.',
+      );
+      assert.equal(
+        input.validateInput('bad\x00value'),
+        chinese
+          ? '输入内容不能包含换行或空字符。'
+          : 'Line breaks and null characters are not allowed.',
       );
       const persistence = ui.choices.find((x) => x.items[0].remember === true);
       assert.equal(
@@ -331,6 +483,13 @@ try {
         chinese ? '仅本次使用' : 'Use Once',
       );
       assert.ok(!persistence.options.title.includes('{0}'));
+      assert.equal(
+        persistence.options.placeHolder,
+        chinese
+          ? '选择是否记住此密码'
+          : 'Choose whether to remember this password',
+      );
+      assert.ok(!/\d{4}-\d{2}-\d{2}T/.test(inspection[0].detail));
       const confirmation = ui.warnings[0];
       assert.equal(
         confirmation.text,
@@ -362,7 +521,7 @@ try {
       assert.ok(!confirmation.options.detail.includes('fixture@'));
       assert.ok(
         inspection[0].detail.startsWith(
-          chinese ? '成功认证时间：' : 'Successfully authenticated:',
+          chinese ? '上次登录：' : 'Last sign-in:',
         ),
       );
       await commands.get('sshPasswordMemory.diagnostics')();
@@ -416,12 +575,12 @@ try {
         assert.equal(
           input.prompt,
           locale === 'zh-cn'
-            ? '请完成服务器验证，本次输入不会保存。'
-            : 'Complete the server authentication step. This response will not be saved.',
+            ? '本次输入仅用于当前连接，不会保存。'
+            : 'This response is used for this connection only and will not be saved.',
         );
         assert.ok(
           input.placeHolder.startsWith(
-            locale === 'zh-cn' ? '服务器提示：' : 'Server request: ',
+            locale === 'zh-cn' ? '验证提示：' : 'Authentication request: ',
           ),
         );
         assert.ok(input.placeHolder.includes('fixture@127.0.0.1'));
@@ -449,6 +608,27 @@ try {
     'localized forget confirms and deletes without exposing the password',
     async () => {
       selectCredential = true;
+      acceptDelete = false;
+      await commands.get('sshPasswordMemory.forget')();
+      assert.equal(
+        [...secrets.keys()].filter((k) => k.startsWith('credential.')).length,
+        1,
+      );
+      const removal = ui.warnings.at(-1);
+      assert.equal(
+        removal.text,
+        locale === 'zh-cn'
+          ? '删除已保存的密码？'
+          : 'Delete this saved password?',
+      );
+      assert.ok(
+        removal.options.detail.includes(
+          locale === 'zh-cn'
+            ? '不会修改服务器上的密码'
+            : 'Your server password will stay the same.',
+        ),
+      );
+      acceptDelete = true;
       await commands.get('sshPasswordMemory.forget')();
       selectCredential = false;
       assert.equal(
@@ -457,14 +637,16 @@ try {
       );
       assert.equal(
         messages.at(-1),
-        locale === 'zh-cn' ? '已忘记密码。' : 'Password forgotten.',
+        locale === 'zh-cn'
+          ? '已删除本机保存的密码。'
+          : 'Saved password deleted.',
       );
       await commands.get('sshPasswordMemory.manage')();
       assert.equal(
         messages.at(-1),
         locale === 'zh-cn'
-          ? '尚无已保存凭据。只有选择记住且认证成功后才会出现在这里。'
-          : 'No saved credentials yet. Credentials appear here only after choosing Remember on This Device and authenticating successfully.',
+          ? '还没有保存的密码。连接时可选择“记住到本机”。'
+          : 'No saved passwords yet. Choose Remember on This Device when you connect.',
       );
     },
   );
@@ -501,6 +683,32 @@ try {
         b = await run(original.get('path'), ['-V']);
       assert.equal(a.code, b.code);
       assert.equal(a.stderr, b.stderr);
+    },
+  );
+  await check(
+    'native SSH path errors follow the display language without exposing raw failures',
+    async () => {
+      const directory = path.join(tmp, 'native-message');
+      await fs.mkdir(directory);
+      const executable = path.join(directory, 'ssh.exe');
+      await fs.copyFile(path.join(root, 'bin', 'ssh.exe'), executable);
+      await fs.writeFile(
+        path.join(directory, 'bridge.json'),
+        JSON.stringify({ realSSH: 'relative-ssh.exe', enabled: false }),
+      );
+      const response = await run(executable, ['-V'], {
+        VSCODE_NLS_CONFIG: JSON.stringify({ resolvedLanguage: locale }),
+      });
+      assert.equal(response.code, 255);
+      assert.ok(
+        response.stderr.startsWith(
+          locale === 'zh-cn'
+            ? 'SSH 密码记忆：SSH 程序路径无效。'
+            : 'SSH Password Memory: The SSH program path is invalid.',
+        ),
+      );
+      assert.ok(response.stderr.includes('remote.SSH.path'));
+      assert.ok(!response.stderr.includes(password));
     },
   );
 } catch (error) {

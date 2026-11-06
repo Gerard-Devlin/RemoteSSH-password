@@ -32,7 +32,42 @@ interface BridgeConfig {
   enabled: boolean;
 }
 let runtime: Runtime | undefined;
-const label = (t: Target) => t.user + '@' + t.host + ':' + t.port;
+const label = (t: Target) => t.user + '@' + serverAddress(t);
+class ActionError extends Error {
+  constructor(
+    message: string,
+    readonly detail: string,
+  ) {
+    super(message);
+  }
+}
+async function showProblem(
+  message: string,
+  detail: string,
+  showDiagnostics: () => void,
+): Promise<void> {
+  const action: vscode.MessageItem = {
+    title: vscode.l10n.t('Show Diagnostics'),
+  };
+  const selected = await vscode.window.showErrorMessage(
+    message,
+    { modal: true, detail },
+    action,
+  );
+  if (selected === action) showDiagnostics();
+}
+function formatSavedTime(value: string): string {
+  try {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return vscode.l10n.t('Unknown');
+    return new Intl.DateTimeFormat(vscode.env.language, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
+  } catch {
+    return vscode.l10n.t('Unknown');
+  }
+}
 async function atomicJSON(file: string, data: unknown) {
   const temp = file + '.' + process.pid + '.tmp';
   await fs.writeFile(temp, JSON.stringify(data, null, 2), {
@@ -44,7 +79,9 @@ async function atomicJSON(file: string, data: unknown) {
 class Runtime implements vscode.Disposable {
   private broker?: ChildProcessWithoutNullStreams;
   private core: CredentialCore;
-  private output = vscode.window.createOutputChannel('SSH Password Memory');
+  private output = vscode.window.createOutputChannel(
+    vscode.l10n.t('SSH Password Memory'),
+  );
   private activeUI = new Set<vscode.CancellationTokenSource>();
   private uiQueue: Promise<unknown> = Promise.resolve();
   private indexQueue: Promise<unknown> = Promise.resolve();
@@ -68,7 +105,7 @@ class Runtime implements vscode.Disposable {
         changed: (t) => {
           void vscode.window.showWarningMessage(
             vscode.l10n.t(
-              'SSH Password Memory: the host fingerprint for {0} differs from the saved record. Automatic password filling has stopped. Verify the server before continuing.',
+              'The server fingerprint for {0} differs from the saved one. Automatic password entry is paused for this connection. Verify the server before signing in.',
               label(t),
             ),
           );
@@ -123,31 +160,38 @@ class Runtime implements vscode.Disposable {
       try {
         const value = await vscode.window.showInputBox(
           {
-            title: vscode.l10n.t('SSH Password Memory · {0}', label(t)),
+            title: cacheable
+              ? vscode.l10n.t('SSH password · {0}', label(t))
+              : vscode.l10n.t('SSH verification · {0}', label(t)),
             prompt: cacheable
               ? failed
-                ? vscode.l10n.t(
-                    'The server rejected the previous password. Enter a new password.',
-                  )
+                ? vscode.l10n.t('The server rejected the password. Try again.')
                 : vscode.l10n.t(
-                    'Enter the server password. It will only be saved after successful authentication.',
+                    'You can choose whether to remember this password in the next step.',
                   )
               : vscode.l10n.t(
-                  'Complete the server authentication step. This response will not be saved.',
+                  'This response is used for this connection only and will not be saved.',
                 ),
             placeHolder: cacheable
               ? vscode.l10n.t('Enter server password')
-              : vscode.l10n.t('Server request: {0}', prompt.slice(0, 500)),
+              : vscode.l10n.t(
+                  'Authentication request: {0}',
+                  prompt.slice(0, 500),
+                ),
             password: true,
             ignoreFocusOut: true,
             validateInput: (v) =>
               !v
-                ? vscode.l10n.t('Enter a value.')
-                : /[\r\n\x00]/.test(v) || Buffer.byteLength(v, 'utf8') > 8192
+                ? vscode.l10n.t('Enter a response to continue.')
+                : /[\r\n\x00]/.test(v)
                   ? vscode.l10n.t(
-                      'Newlines, NUL characters, and answers longer than 8192 bytes are not supported.',
+                      'Line breaks and null characters are not allowed.',
                     )
-                  : undefined,
+                  : Buffer.byteLength(v, 'utf8') > 8192
+                    ? vscode.l10n.t(
+                        'The input is too long. Use no more than 8192 bytes.',
+                      )
+                    : undefined,
           },
           token.token,
         );
@@ -160,19 +204,19 @@ class Runtime implements vscode.Disposable {
               label: vscode.l10n.t('Remember on This Device'),
               remember: true,
               description: vscode.l10n.t(
-                'Save to VS Code encrypted storage only after successful authentication',
+                'Save after a successful sign-in; fill automatically next time',
               ),
             },
             {
               label: vscode.l10n.t('Use Once'),
               remember: false,
-              description: vscode.l10n.t('Ask again on the next connection'),
+              description: vscode.l10n.t('Do not save; ask again next time'),
             },
           ],
           {
-            title: vscode.l10n.t(
-              'How should the password for {0} be used?',
-              label(t),
+            title: vscode.l10n.t('Password for {0}', label(t)),
+            placeHolder: vscode.l10n.t(
+              'Choose whether to remember this password',
             ),
             ignoreFocusOut: true,
           },
@@ -200,7 +244,9 @@ class Runtime implements vscode.Disposable {
       const server = vscode.l10n.t('Server: {0}', serverAddress(t));
       const detail = identity
         ? [
-            vscode.l10n.t('This server is not yet trusted on this device.'),
+            vscode.l10n.t(
+              'The server identity needs confirmation for this connection.',
+            ),
             '',
             server,
             vscode.l10n.t('Key type: {0}', identity.keyType),
@@ -220,7 +266,7 @@ class Runtime implements vscode.Disposable {
             ),
             '',
             vscode.l10n.t(
-              'Review the server request before continuing. Cancel if you are unsure.',
+              'Review the SSH request before continuing. Cancel if you are unsure.',
             ),
           ].join('\n');
       const yes = await vscode.window.showWarningMessage(
@@ -228,7 +274,9 @@ class Runtime implements vscode.Disposable {
           ? vscode.l10n.t('Trust this server?')
           : vscode.l10n.t('Review the SSH confirmation'),
         { modal: true, detail },
-        vscode.l10n.t('Trust and Connect'),
+        identity
+          ? vscode.l10n.t('Trust and Connect')
+          : vscode.l10n.t('Continue Connection'),
       );
       return yes && this.enabled && !signal?.aborted
         ? { value: 'yes' }
@@ -311,9 +359,7 @@ class Runtime implements vscode.Disposable {
         clearTimeout(timer);
         readyResolve();
         this.output.appendLine(
-          vscode.l10n.t(
-            'Local authentication broker is ready (answers are never logged).',
-          ),
+          vscode.l10n.t('The local authentication service is ready.'),
         );
         return;
       }
@@ -341,7 +387,7 @@ class Runtime implements vscode.Disposable {
             );
           this.output.appendLine(
             vscode.l10n.t(
-              'Credential operation failed. This authentication answer was canceled.',
+              'Could not access saved passwords. Reconnect and try again.',
             ),
           );
         });
@@ -349,9 +395,7 @@ class Runtime implements vscode.Disposable {
     broker.stdin.on('error', () => {});
     broker.stderr.on('data', () => {
       this.output.appendLine(
-        vscode.l10n.t(
-          'The native broker reported an error; raw contents were not logged.',
-        ),
+        vscode.l10n.t('The local authentication service reported an error.'),
       );
     });
     broker.on('error', () => {
@@ -359,7 +403,7 @@ class Runtime implements vscode.Disposable {
       readyResolve();
       this.output.appendLine(
         vscode.l10n.t(
-          'Could not start the local broker. Enable password memory again.',
+          'Could not start the local authentication service. Disable password memory, then enable it again.',
         ),
       );
     });
@@ -377,7 +421,7 @@ class Runtime implements vscode.Disposable {
             void this.launch().catch(() =>
               this.output.appendLine(
                 vscode.l10n.t(
-                  'Broker restart failed. Disable password memory, then enable it again.',
+                  'Could not restart the local authentication service. Disable password memory, then enable it again.',
                 ),
               ),
             ),
@@ -387,27 +431,30 @@ class Runtime implements vscode.Disposable {
     await ready;
     if (!healthy) {
       this.stopBroker();
-      throw new Error('Broker did not become ready');
+      throw new ActionError(
+        vscode.l10n.t('Could not start the authentication service'),
+        vscode.l10n.t('Disable password memory, then enable it again.'),
+      );
     }
   }
   async enable() {
     if (process.platform !== 'win32' || process.arch !== 'x64') {
       await vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          'This preview only supports local VS Code on Windows x64.',
-        ),
+        vscode.l10n.t('This extension requires local VS Code on Windows x64.'),
       );
       return;
     }
-    if (this.context.globalState.get<OwnedSettings>(stateKey)) {
-      await vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          'An existing setup was found. To change the real SSH executable, disable password memory before enabling it again.',
-        ),
-      );
+    const previous = this.context.globalState.get<OwnedSettings>(stateKey);
+    if (previous) {
       const current = await this.bridgeConfig();
-      if (current?.enabled) {
+      if (
+        current?.enabled &&
+        this.config().get<string>('path') === previous.bridgePath
+      ) {
         await this.start();
+        await vscode.window.showInformationMessage(
+          vscode.l10n.t('Password memory is already on.'),
+        );
         return;
       }
       await this.disable(false);
@@ -452,18 +499,46 @@ class Runtime implements vscode.Disposable {
         throw new Error('unsupported');
       await fs.access(realSCP);
     } catch {
-      await vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          'This OpenSSH build is unsupported, or scp.exe is missing. The preview requires the Windows OpenSSH 9.5p2 SHA256 listed in the compatibility guide. Settings were not changed.',
-        ),
+      await showProblem(
+        vscode.l10n.t('Could not enable password memory'),
+        [
+          vscode.l10n.t(
+            'The SSH program is missing, unsupported, or does not have scp.exe beside it.',
+          ),
+          vscode.l10n.t('SSH program: {0}', realSSH),
+          '',
+          vscode.l10n.t(
+            'This preview requires the OpenSSH 9.5p2 build listed in the compatibility guide.',
+          ),
+          vscode.l10n.t('Password memory was not enabled.'),
+        ].join('\n'),
+        () => this.diagnostics(),
       );
       return;
     }
     const accepted = await vscode.window.showInformationMessage(
-      vscode.l10n.t(
-        'Only the user settings remote.SSH.path and remote.SSH.useLocalServer will change. Passwords use VS Code SecretStorage; server fingerprints are never accepted automatically. Managed connections hide pre-authentication server banners to prevent spoofed authentication signals. A persistent bridge remains after disabling or uninstalling for ordinary SSH fallback.',
-      ),
-      { modal: true },
+      vscode.l10n.t('Enable SSH password memory?'),
+      {
+        modal: true,
+        detail: [
+          vscode.l10n.t('Keep using Remote-SSH to connect to your servers.'),
+          '',
+          vscode.l10n.t('User settings to change:'),
+          vscode.l10n.t("remote.SSH.path → this extension's local SSH helper"),
+          vscode.l10n.t('remote.SSH.useLocalServer → true'),
+          '',
+          vscode.l10n.t(
+            'Passwords you choose to remember are saved locally in encrypted storage after a successful sign-in.',
+          ),
+          vscode.l10n.t(
+            'You confirm server fingerprints yourself. Server notices shown before authentication are hidden while password memory is on.',
+          ),
+          '',
+          vscode.l10n.t(
+            'The local SSH helper stays on this device after disabling or uninstalling, to support ordinary SSH connections.',
+          ),
+        ].join('\n'),
+      },
       vscode.l10n.t('Enable Password Memory'),
     );
     if (!accepted) return;
@@ -513,15 +588,16 @@ class Runtime implements vscode.Disposable {
       );
     } catch {
       await this.disable(false);
-      throw new Error(
+      throw new ActionError(
+        vscode.l10n.t('Could not update SSH settings'),
         vscode.l10n.t(
-          'Could not update user settings; recovery was attempted.',
+          'Automatic recovery was attempted. Check remote.SSH.path in your user settings before trying again.',
         ),
       );
     }
     await vscode.window.showInformationMessage(
       vscode.l10n.t(
-        'Password memory is enabled. Connect through Remote-SSH as usual; enter the first password only in VS Code.',
+        'Password memory is on. Connect to a host with Remote-SSH.',
       ),
     );
   }
@@ -548,12 +624,15 @@ class Runtime implements vscode.Disposable {
       for (const [k, v] of Object.entries(changes))
         await cfg.update(k, v.value, vscode.ConfigurationTarget.Global);
       await this.context.globalState.update(stateKey, undefined);
+      this.output.appendLine(
+        vscode.l10n.t(
+          'Connection settings were restored unless you had changed them manually.',
+        ),
+      );
     }
     if (notify)
       await vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          'Password memory is disabled. Settings still owned by this extension were restored. Saved passwords are retained; use Forget Password to delete them.',
-        ),
+        vscode.l10n.t('Password memory is off. Saved passwords are kept.'),
       );
   }
   async manage() {
@@ -576,59 +655,69 @@ class Runtime implements vscode.Disposable {
     const items = Object.values(index).map((r) => ({
       label: label(r.target),
       description: r.fingerprint,
-      detail: vscode.l10n.t('Successfully authenticated: {0}', r.updated),
+      detail: vscode.l10n.t('Last sign-in: {0}', formatSavedTime(r.updated)),
       record: r,
     }));
     if (!items.length) {
       await vscode.window.showInformationMessage(
         vscode.l10n.t(
-          'No saved credentials yet. Credentials appear here only after choosing Remember on This Device and authenticating successfully.',
+          'No saved passwords yet. Choose Remember on This Device when you connect.',
         ),
       );
       return;
     }
     const selected = await vscode.window.showQuickPick(items, {
-      title: vscode.l10n.t(
-        'Saved credentials (select to delete; passwords are never displayed)',
+      title: vscode.l10n.t('Saved Passwords'),
+      placeHolder: vscode.l10n.t(
+        'Select a connection to delete its saved password',
       ),
       matchOnDescription: true,
     });
     if (!selected) return;
     if (
       await vscode.window.showWarningMessage(
-        vscode.l10n.t('Forget the password for {0}?', selected.label),
-        { modal: true },
-        vscode.l10n.t('Forget Password'),
+        vscode.l10n.t('Delete this saved password?'),
+        {
+          modal: true,
+          detail: [
+            vscode.l10n.t('Connection: {0}', selected.label),
+            vscode.l10n.t(
+              'Only the saved copy on this device will be removed. Your server password will stay the same.',
+            ),
+          ].join('\n\n'),
+        },
+        vscode.l10n.t('Delete Password'),
       )
     ) {
       await this.core.forget(selected.record.target);
       await vscode.window.showInformationMessage(
-        vscode.l10n.t('Password forgotten.'),
+        vscode.l10n.t('Saved password deleted.'),
       );
     }
   }
   diagnostics() {
+    this.output.appendLine(vscode.l10n.t('VS Code: {0}', vscode.version));
+    this.output.appendLine(
+      vscode.l10n.t('Platform: {0}/{1}', process.platform, process.arch),
+    );
     this.output.appendLine(
       vscode.l10n.t(
-        'Platform: {0}/{1}; VS Code: {2}',
-        process.platform,
-        process.arch,
-        vscode.version,
+        'Password memory: {0}',
+        this.enabled ? vscode.l10n.t('on') : vscode.l10n.t('off'),
       ),
     );
     this.output.appendLine(
       vscode.l10n.t(
-        'Broker: {0}; password memory: {1}',
+        'Authentication service: {0}',
         this.broker ? vscode.l10n.t('running') : vscode.l10n.t('not running'),
-        this.enabled ? vscode.l10n.t('enabled') : vscode.l10n.t('disabled'),
       ),
     );
     this.output.appendLine(
-      vscode.l10n.t('Persistent bridge: {0}', this.bridgeDir),
+      vscode.l10n.t('Local SSH helper folder: {0}', this.bridgeDir),
     );
     this.output.appendLine(
       vscode.l10n.t(
-        'Only the SSH password method can be remembered. Keyboard-interactive, OTP, and key passphrases require manual input and are not saved.',
+        'Only SSH password authentication can be remembered. Verification codes, interactive challenges, and key passphrases must be entered each time.',
       ),
     );
     this.output.show();
@@ -662,11 +751,17 @@ export async function activate(context: vscode.ExtensionContext) {
   const run = (f: () => Promise<unknown> | void) => async () => {
     try {
       await runtime!.command(f);
-    } catch {
-      await vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          'SSH Password Memory could not complete the operation. Check diagnostics or restore remote.SSH.path using the troubleshooting guide. Authentication contents were not logged.',
-        ),
+    } catch (error) {
+      await showProblem(
+        error instanceof ActionError
+          ? error.message
+          : vscode.l10n.t('Could not complete this action'),
+        error instanceof ActionError
+          ? error.detail
+          : vscode.l10n.t(
+              'Run Show Diagnostics from the Command Palette, then try again.',
+            ),
+        () => runtime!.diagnostics(),
       );
     }
   };

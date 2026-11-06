@@ -75,7 +75,7 @@ func main() {
 		c.RealSCP = filepath.Join(filepath.Dir(c.RealSSH), "scp.exe")
 	}
 	if !filepath.IsAbs(c.RealSSH) || samePath(c.RealSSH, exe) || samePath(filepath.Dir(c.RealSSH), dir) {
-		safeError("invalid real OpenSSH path; restore remote.SSH.path in Settings")
+		safeError("invalid-ssh-path")
 		os.Exit(255)
 	}
 	if mode == "scp.exe" {
