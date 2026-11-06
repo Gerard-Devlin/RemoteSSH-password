@@ -1,3 +1,4 @@
+import path from 'node:path';
 export const targets = ['win32-x64', 'darwin-arm64', 'darwin-x64'];
 export function targetOptions(target) {
   if (target === undefined) {
@@ -21,6 +22,11 @@ export function targetOptions(target) {
 export const suffix = process.platform === 'win32' ? '.exe' : '';
 export const realSSH =
   process.platform === 'win32'
-    ? process.env.WINDIR + '/System32/OpenSSH/ssh.exe'
+    ? path.join(
+        process.env.WINDIR || 'C:\\Windows',
+        'System32',
+        'OpenSSH',
+        'ssh.exe',
+      )
     : '/usr/bin/ssh';
 export const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null';
