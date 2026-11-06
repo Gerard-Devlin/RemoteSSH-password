@@ -4,7 +4,7 @@
 
 Windows x64 的 VS Code 扩展，配合 Microsoft Remote-SSH 使用。首次输入固定密码后可选择记住；只有 OpenSSH 确认密码认证成功才写入 VS Code SecretStorage。
 
-> 当前为 0.1.5 本地预览版，仅支持一个精确校验的 OpenSSH 构建。真实 VS Code 密码界面、SecretStorage 跨重启及完整 Remote-SSH 安装流程仍待验收。请先阅读[兼容范围](compatibility.md)和[测试报告](testing/2026-11-06.md)。
+> 当前为 0.1.6 本地预览版，仅支持一个精确校验的 OpenSSH 构建。真实 VS Code 密码界面、SecretStorage 跨重启及完整 Remote-SSH 安装流程仍待验收。请先阅读[兼容范围](compatibility.md)和[测试报告](testing/2026-11-06.md)。
 
 ## 从旧版迁移
 
@@ -12,7 +12,7 @@ Publisher 现为 `Devlin`。若已安装 `local-tools` 预览版，请先在旧�
 
 ## 安装与连接
 
-1. 在本地 Windows x64 VS Code 安装 Microsoft Remote-SSH，再通过扩展菜单“从 VSIX 安装”选择 `remote-ssh-password-memory-0.1.5-win32-x64.vsix`。
+1. 在本地 Windows x64 VS Code 安装 Microsoft Remote-SSH，再通过扩展菜单“从 VSIX 安装”选择 `remote-ssh-password-memory-0.1.6-win32-x64.vsix`。
 2. 在命令面板运行 **SSH 密码记忆: 启用**，确认接入设置。
 3. 继续用 Remote-SSH 选择服务器，先核对首次信任的服务器指纹。
 4. 在 VS Code 隐藏密码框输入固定密码，选择“记住到本机”或“仅本次使用”。

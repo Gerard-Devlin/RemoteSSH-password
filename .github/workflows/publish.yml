@@ -91,6 +91,6 @@ jobs:
         run: |
           $artifact = ./scripts/verify-ci-artifact.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT | ConvertFrom-Json
           & node node_modules/@vscode/vsce/vsce publish --oidc --packagePath $artifact.package --skip-duplicate
-          if ($LASTEXITCODE -ne 0) { throw 'Marketplace publishing failed. Check the Devlin Trusted Publishing policy for this repository and publish.yml.' }
+          if ($LASTEXITCODE -ne 0) { throw 'Marketplace upload failed. Inspect the error above for package validation or Trusted Publishing details.' }
           '### Marketplace publish step completed' >> $env:GITHUB_STEP_SUMMARY
           'Publisher: Devlin. Existing versions are never overwritten. Check https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory for platform validation and availability.' >> $env:GITHUB_STEP_SUMMARY

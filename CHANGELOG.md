@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.6 — 2026-11-06
+
+- Resize the supplied icon to 512 × 512 for Marketplace compatibility, preserving its artwork and transparency.
+- Reject packaged icons outside the 128–1024 pixel square range during documentation and VSIX verification.
+- Make upload failures point to the actual validation error as well as Trusted Publishing settings.
+
 ## 0.1.5 — 2026-11-06
 
 - Add bilingual authentication diagnostics that distinguish a saved password being offered, a missing match, manual authentication, rejection, and a successful save.

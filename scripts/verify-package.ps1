@@ -33,6 +33,11 @@ try{
   $url=if($match.Groups[1].Success){$match.Groups[1].Value}else{$match.Groups[2].Value}
   if(!$url.StartsWith('#') -and !$url.StartsWith('https://')){throw 'Marketplace README has a non-HTTPS link or image'}
  }
+ $icon=Read-EntryBytes $zip.GetEntry('extension/'+$metadata.icon)
+ if($icon.Length -lt 24 -or ([BitConverter]::ToString($icon,0,8)) -cne '89-50-4E-47-0D-0A-1A-0A'){throw 'The Marketplace icon must be a PNG'}
+ $width=[Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($icon,16))
+ $height=[Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($icon,20))
+ if($width -ne $height -or $width -lt 128 -or $width -gt 1024){throw 'The Marketplace icon must be square and between 128 and 1024 pixels'}
  $nativeHashes=@{};$fileHashes=@{}
  foreach($entry in $zip.Entries){
   $bytes=Read-EntryBytes $entry

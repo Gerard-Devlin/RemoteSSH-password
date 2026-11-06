@@ -126,12 +126,16 @@ test('release versions and README installation example agree', async () => {
   );
 });
 
-test('supplied square PNG is the extension and README icon', async () => {
+test('supplied icon fits Marketplace limits and is used by the extension and README', async () => {
   assert.equal(manifest.icon, 'media/icon.png');
   const icon = await fs.readFile(path.join(root, manifest.icon));
   assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(icon.readUInt32BE(16), icon.readUInt32BE(20));
   assert.ok(icon.readUInt32BE(16) >= 128);
+  assert.ok(
+    icon.readUInt32BE(16) <= 1024,
+    'Marketplace icons must not exceed 1024 pixels',
+  );
   assert.ok(
     (await read('README.md')).includes(
       'src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/' +
