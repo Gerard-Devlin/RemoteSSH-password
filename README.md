@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/icon.png" alt="Remote SSH Password Memory icon" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/readme-logo.png" alt="Remote SSH Password Memory icon" width="128" height="128">
 </p>
 
 <h1 align="center">Remote SSH Password Memory</h1>
@@ -17,7 +17,7 @@
 
 A Windows x64 companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.1.8.** Local OpenSSH loopback and isolated VS Code SecretStorage restart tests pass. Complete interactive Remote-SSH installation and visual UI acceptance remain open. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
+> **Preview 0.1.9.** Local OpenSSH loopback and isolated VS Code SecretStorage restart tests pass. Complete interactive Remote-SSH installation and visual UI acceptance remain open. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
 
 ## Features
 
@@ -49,7 +49,7 @@ If the old preview has already been removed and Enable reports its helper path a
 ### Install and connect
 
 1. Install [Remote SSH Password Memory](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) from the VS Code Marketplace. In the Extensions view, search for `Devlin.remote-ssh-password-memory` and check the publisher is **Devlin**.
-2. Ensure Microsoft Remote-SSH is installed. For manual installation, download `remote-ssh-password-memory-0.1.8-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
+2. Ensure Microsoft Remote-SSH is installed. For manual installation, download `remote-ssh-password-memory-0.1.9-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
 3. Run **SSH Password Memory: Enable** from the Command Palette and confirm the two setting changes.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
@@ -58,7 +58,7 @@ If the old preview has already been removed and Enable reports its helper path a
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.1.8-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-0.1.9-win32-x64.vsix
 ```
 
 Installing the extension does not enable password memory. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.

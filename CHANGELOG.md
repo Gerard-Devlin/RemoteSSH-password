@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.9 — 2026-11-06
+
+- Restore the original supplied artwork in the README header as a separate, unchanged image asset. Keep the resized Marketplace icon independent.
+
 ## 0.1.8 — 2026-11-06
 
 - Recognize stale SSH helper paths from the local-tools preview instead of validating them as real OpenSSH programs.

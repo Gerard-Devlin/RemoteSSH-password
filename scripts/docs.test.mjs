@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = (name) => fs.readFile(path.join(root, name), 'utf8');
@@ -126,7 +127,7 @@ test('release versions and README installation example agree', async () => {
   );
 });
 
-test('supplied icon fits Marketplace limits and is used by the extension and README', async () => {
+test('Marketplace icon and original README artwork use independent assets', async () => {
   assert.equal(manifest.icon, 'media/icon.png');
   const icon = await fs.readFile(path.join(root, manifest.icon));
   assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
@@ -136,11 +137,14 @@ test('supplied icon fits Marketplace limits and is used by the extension and REA
     icon.readUInt32BE(16) <= 1024,
     'Marketplace icons must not exceed 1024 pixels',
   );
+  const artwork = await fs.readFile(path.join(root, 'media/readme-logo.png'));
+  assert.equal(
+    createHash('sha256').update(artwork).digest('hex'),
+    'dc1827c8d37ccaf2e49234698731df54c360f31f4e3e6fd1a675f98b1653a072',
+  );
   assert.ok(
     (await read('README.md')).includes(
-      'src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/' +
-        manifest.icon +
-        '"',
+      'src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/readme-logo.png"',
     ),
   );
 });
