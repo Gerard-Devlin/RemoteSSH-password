@@ -6,6 +6,12 @@
 
 Version 0.1.5 uses publisher `Devlin`, creating a new extension identity. Restore settings and uninstall the old extension before installing the new one; follow the [migration guide](marketplace.md#migrate-from-the-local-tools-preview). Passwords are not automatically migrated.
 
+## Enable reports that an old local-tools SSH helper is unsupported
+
+A path ending in `globalStorage/local-tools.remote-ssh-password-memory/bridge-v1/ssh.exe` is a wrapper from the previous publisher. It is not the real OpenSSH binary. If the old extension was uninstalled first, this setting can remain while the wrapper and its recovery files have already been removed. Remote-SSH then shows its ordinary password box, and this extension cannot offer to remember anything.
+
+Install 0.1.8 or later, reload the local window, and run **Enable** again. Review the migration detail before confirming. The extension checks the real OpenSSH version/hash and SCP as usual. If no old recovery journal remains, disabling later keeps the verified real SSH program configured rather than restoring the deleted wrapper. Credentials are not read or transferred from the old publisher.
+
 ## Update from an earlier preview
 
 Install the new VSIX and reload the local VS Code window. If password memory was already enabled, run **Disable and Restore SSH Settings**, then **Enable** once to refresh the deployed local SSH helpers. Saved passwords are retained.

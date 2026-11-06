@@ -31,7 +31,9 @@ Complete these steps in the local Windows VS Code window before installing the D
 
 The old and new extensions use the same management command IDs, so they should not remain enabled side by side. Old saved passwords are not exported, copied, or deleted by this update. If you want to remove the old saved copies, use the old extension's **Delete Saved Password** command before uninstalling it.
 
-If the old extension was removed while its SSH path was still configured, follow the [recovery guide](troubleshooting.md#restore-remote-ssh-after-removal) before enabling the new one. Recovery records stay with the extension identity that created them.
+From 0.1.8, **Enable** recognizes an exact stale local-tools helper path. It carries over original SSH settings from a matching recovery journal when available. If those files were removed, it selects a supported real OpenSSH program, explains the fallback in the setup confirmation, and records that working program for later disable/recovery. It never saves a missing legacy helper as the new restoration target.
+
+This repairs connection settings only. Passwords remain in their original extension namespace and are not copied. If automatic path recovery cannot find the supported OpenSSH build, follow the [manual recovery guide](troubleshooting.md#restore-remote-ssh-after-removal).
 
 ## Build the upload package
 

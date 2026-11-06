@@ -84,5 +84,7 @@
   "No saved password matches this connection.": "没有找到与本次连接匹配的已保存密码。",
   "A saved password was supplied for this connection.": "已为本次连接提供保存的密码。",
   "Password saved on this device after a successful sign-in.": "登录成功，密码已保存到本机。",
-  "The server rejected the password. A rejected saved copy will not be used again.": "服务器拒绝了该密码；被拒绝的已保存密码不会再次使用。"
+  "The server rejected the password. A rejected saved copy will not be used again.": "服务器拒绝了该密码；被拒绝的已保存密码不会再次使用。",
+  "The previous SSH helper will be replaced. Its original connection settings will be preserved for recovery.": "将替换之前的 SSH 辅助程序，并保留它记录的原始连接设置，以便关闭时恢复。",
+  "The previous SSH helper's original settings are unavailable. A verified OpenSSH program will replace it. Disabling password memory will keep that program configured.": "之前的 SSH 辅助程序已无法提供原始设置。将改用已验证的 OpenSSH；关闭密码记忆后也会继续使用该程序。"
 }

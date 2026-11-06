@@ -18,7 +18,12 @@ import {
   RecordValue,
   keyFor,
 } from './core';
-import { restoration, OwnedSettings } from './settings';
+import {
+  restoration,
+  OwnedSettings,
+  managedBridgeDirectory,
+  selectSSHSettings,
+} from './settings';
 import { TESTED_SSH_SHA256 } from './compatibility';
 import { parseHostIdentity, serverAddress } from './hostIdentity';
 const execute = promisify(execFile);
@@ -480,28 +485,46 @@ class Runtime implements vscode.Disposable {
       await this.disable(false);
     }
     const cfg = this.config();
-    const original = {
+    const currentSettings = {
       path: cfg.inspect<string>('path')?.globalValue,
       useLocalServer: cfg.inspect<boolean>('useLocalServer')?.globalValue,
     };
-    let realSSH =
-      original.path ||
+    const defaultSSH = path.join(
+      process.env.WINDIR || 'C:\\Windows',
+      'System32',
+      'OpenSSH',
+      'ssh.exe',
+    );
+    const knownDirectories = [
+      this.bridgeDir,
       path.join(
-        process.env.WINDIR || 'C:\\Windows',
-        'System32',
-        'OpenSSH',
-        'ssh.exe',
-      );
-    if (
-      path.resolve(path.dirname(realSSH)).toLowerCase() ===
-      path.resolve(this.bridgeDir).toLowerCase()
-    )
-      realSSH = path.join(
-        process.env.WINDIR || 'C:\\Windows',
-        'System32',
-        'OpenSSH',
-        'ssh.exe',
-      );
+        path.dirname(this.context.globalStorageUri.fsPath),
+        'local-tools.remote-ssh-password-memory',
+        'bridge-v1',
+      ),
+    ];
+    const previousDirectory = managedBridgeDirectory(
+      currentSettings.path,
+      knownDirectories,
+    );
+    const readMetadata = async (name: string): Promise<unknown> => {
+      if (!previousDirectory) return;
+      try {
+        return JSON.parse(
+          await fs.readFile(path.join(previousDirectory, name), 'utf8'),
+        );
+      } catch {
+        return undefined;
+      }
+    };
+    const selection = selectSSHSettings(
+      currentSettings,
+      defaultSSH,
+      knownDirectories,
+      await readMetadata('recovery.json'),
+      await readMetadata('bridge.json'),
+    );
+    const { original, realSSH } = selection;
     const realSCP = path.join(path.dirname(realSSH), 'scp.exe');
     try {
       const version = await execute(realSSH, ['-V'], {
@@ -543,6 +566,19 @@ class Runtime implements vscode.Disposable {
         detail: [
           vscode.l10n.t('Keep using Remote-SSH to connect to your servers.'),
           '',
+          ...(selection.migration === 'none'
+            ? []
+            : [
+                selection.migration === 'recovered'
+                  ? vscode.l10n.t(
+                      'The previous SSH helper will be replaced. Its original connection settings will be preserved for recovery.',
+                    )
+                  : vscode.l10n.t(
+                      "The previous SSH helper's original settings are unavailable. A verified OpenSSH program will replace it. Disabling password memory will keep that program configured.",
+                    ),
+                vscode.l10n.t('SSH program: {0}', realSSH),
+                '',
+              ]),
           vscode.l10n.t('User settings to change:'),
           vscode.l10n.t("remote.SSH.path → this extension's local SSH helper"),
           vscode.l10n.t('remote.SSH.useLocalServer → true'),

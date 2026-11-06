@@ -297,6 +297,88 @@ try {
     },
   );
   await check(
+    'missing local-tools helper migrates only after consent and never restores a dead path',
+    async () => {
+      const oldHelper = path.join(
+        tmp,
+        'local-tools.remote-ssh-password-memory',
+        'bridge-v1',
+        'ssh.exe',
+      );
+      settings.set('path', oldHelper);
+      settings.set('useLocalServer', true);
+      const before = new Map(settings);
+      acceptEnable = false;
+      await commands.get('sshPasswordMemory.enable')();
+      assert.deepEqual(settings, before);
+      const consent = ui.information.at(-1);
+      assert.ok(
+        consent.options.detail.includes(
+          translate(
+            "The previous SSH helper's original settings are unavailable. A verified OpenSSH program will replace it. Disabling password memory will keep that program configured.",
+          ),
+        ),
+      );
+      assert.ok(consent.options.detail.includes(original.get('path')));
+      acceptEnable = true;
+      await commands.get('sshPasswordMemory.enable')();
+      const recovery = JSON.parse(
+        await fs.readFile(
+          path.join(tmp, 'storage', 'bridge-v1', 'recovery.json'),
+          'utf8',
+        ),
+      );
+      assert.equal(recovery.original.path, original.get('path'));
+      assert.equal(recovery.original.useLocalServer, true);
+      const config = JSON.parse(
+        await fs.readFile(
+          path.join(tmp, 'storage', 'bridge-v1', 'bridge.json'),
+          'utf8',
+        ),
+      );
+      assert.equal(config.realSSH, original.get('path'));
+      assert.equal(secrets.size, 0);
+      await commands.get('sshPasswordMemory.disable')();
+      assert.equal(settings.get('path'), original.get('path'));
+      assert.equal(settings.get('useLocalServer'), true);
+      settings.set('useLocalServer', original.get('useLocalServer'));
+    },
+  );
+  await check(
+    'legacy recovery carries original settings without changing the old journal',
+    async () => {
+      const directory = path.join(
+        tmp,
+        'local-tools.remote-ssh-password-memory',
+        'bridge-v1',
+      );
+      await fs.mkdir(directory, { recursive: true });
+      const recovery = JSON.stringify({
+        bridgePath: path.join(directory, 'ssh.exe'),
+        original: { path: original.get('path'), useLocalServer: false },
+      });
+      await fs.writeFile(path.join(directory, 'recovery.json'), recovery);
+      settings.set('path', path.join(directory, 'ssh.exe'));
+      settings.set('useLocalServer', true);
+      await commands.get('sshPasswordMemory.enable')();
+      const consent = ui.information.filter((m) => m.options?.modal).at(-1);
+      assert.ok(
+        consent.options.detail.includes(
+          translate(
+            'The previous SSH helper will be replaced. Its original connection settings will be preserved for recovery.',
+          ),
+        ),
+      );
+      await commands.get('sshPasswordMemory.disable')();
+      assert.deepEqual(settings, original);
+      assert.equal(
+        await fs.readFile(path.join(directory, 'recovery.json'), 'utf8'),
+        recovery,
+      );
+      assert.equal(secrets.size, 0);
+    },
+  );
+  await check(
     'confirmed enable journals originals and starts the actual broker',
     async () => {
       await commands.get('sshPasswordMemory.enable')();

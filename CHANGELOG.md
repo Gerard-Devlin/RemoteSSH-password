@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.8 — 2026-11-06
+
+- Recognize stale SSH helper paths from the local-tools preview instead of validating them as real OpenSSH programs.
+- Recover original settings from a matching helper journal when present; otherwise, use a verified OpenSSH program and never restore a deleted helper path.
+- Explain path recovery in the English and Chinese enable dialog. Keep the exact OpenSSH hash check, explicit setup consent, and credential namespaces unchanged.
+- Cover missing legacy files, recovery metadata, safe restoration, and cancellation in regression tests.
+
 ## 0.1.7 — 2026-11-06
 
 - Add the live Marketplace installation link and explain automatic extension updates in both language guides.
