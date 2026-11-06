@@ -7,6 +7,7 @@
 <p align="center">Remember fixed SSH passwords in VS Code. Keep using Microsoft Remote-SSH.</p>
 
 <p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory">Install from Marketplace</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md">Compatibility</a> ·
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/troubleshooting.md">Troubleshooting</a> ·
@@ -16,7 +17,7 @@
 
 A Windows x64 companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.1.6.** Local OpenSSH loopback tests pass. Real VS Code UI, SecretStorage persistence across restarts, and the complete Remote-SSH server installation still need acceptance testing. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
+> **Preview 0.1.7.** Local OpenSSH loopback and isolated VS Code SecretStorage restart tests pass. Complete interactive Remote-SSH installation and visual UI acceptance remain open. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
 
 ## Features
 
@@ -45,8 +46,8 @@ Restore the old extension’s SSH settings, uninstall it, and reload VS Code bef
 
 ### Install and connect
 
-1. Download a Windows x64 package from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases), or build from source. The current package is `remote-ssh-password-memory-0.1.6-win32-x64.vsix`.
-2. In the local Extensions view, choose **Install from VSIX…** and select that file. Ensure Microsoft Remote-SSH is installed.
+1. Install [Remote SSH Password Memory](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) from the VS Code Marketplace. In the Extensions view, search for `Devlin.remote-ssh-password-memory` and check the publisher is **Devlin**.
+2. Ensure Microsoft Remote-SSH is installed. For manual installation, download `remote-ssh-password-memory-0.1.7-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
 3. Run **SSH Password Memory: Enable** from the Command Palette and confirm the two setting changes.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
@@ -55,10 +56,10 @@ Restore the old extension’s SSH settings, uninstall it, and reload VS Code bef
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.1.6-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-0.1.7-win32-x64.vsix
 ```
 
-Installing the extension does not enable password memory. Preview VSIX packages are available from GitHub Releases; there is no Marketplace listing, telemetry, or automatic update service.
+Installing the extension does not enable password memory. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.
 
 ## Commands
 
@@ -123,7 +124,7 @@ npm run package
 npm run verify:package
 ```
 
-The [contributor guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md) covers loopback integration tests, isolated VS Code testing, and packaging. Generated binaries, VSIX files, and local test profiles are excluded from source control. Source and issue links point to the GitHub repository. The package uses publisher `Devlin` and is prepared for local installation or manual Marketplace upload. Follow the [upload and migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md) when moving from the old `local-tools` preview.
+The [contributor guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md) covers loopback integration tests, isolated VS Code testing, and packaging. Generated binaries, VSIX files, and local test profiles are excluded from source control. Source and issue links point to the GitHub repository. The extension is published under `Devlin`; the same verified Windows x64 package is also attached to each GitHub Release. Follow the [upload and migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md) when moving from the old `local-tools` preview.
 
 For later updates, run `npm run version:patch` and push to main. See the [automatic publishing setup](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#one-time-automatic-publishing-setup) for the required Devlin Trusted Publishing policy and repository switch.
 

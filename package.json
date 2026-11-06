@@ -2,7 +2,7 @@
   "name": "remote-ssh-password-memory",
   "displayName": "Remote SSH Password Memory",
   "description": "%extension.description%",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "Devlin",
   "license": "MIT",
   "engines": {

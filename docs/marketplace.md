@@ -2,6 +2,12 @@
 
 [README](../README.md) · [Compatibility](compatibility.md) · [Recovery](troubleshooting.md)
 
+## Install the published extension
+
+[Remote SSH Password Memory on the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) is published under Devlin. Version 0.1.6 was the first successful OIDC publication on 2026-11-06. The public Marketplace package SHA256 matched the verified GitHub Release artifact. Trusted Publishing and the repository’s automatic-publish variable are now configured for this repository.
+
+The setup instructions below remain available for maintainers and forks. Marketplace-installed copies receive updates through VS Code according to the user’s automatic-update settings.
+
 ## Extension identity
 
 The registered publisher ID supplied for this project is **Devlin**. The manifest identity is:

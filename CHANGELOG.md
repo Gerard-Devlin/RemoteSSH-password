@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.7 — 2026-11-06
+
+- Add the live Marketplace installation link and explain automatic extension updates in both language guides.
+- Update the testing summary to distinguish passed isolated SecretStorage restart checks from pending interactive Remote-SSH acceptance.
+
 ## 0.1.6 — 2026-11-06
 
 - Resize the supplied icon to 512 × 512 for Marketplace compatibility, preserving its artwork and transparency.
