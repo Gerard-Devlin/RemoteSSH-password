@@ -342,3 +342,49 @@ test('manual authentication leaves an existing saved password available', async 
   await h.open('later');
   assert.equal((await h.ask('later')).source, 'saved');
 });
+
+test('interactive fixed password is committed after matching success and reused', async () => {
+  const h = harness();
+  await h.open();
+  const entered = await h.ask('s', { kind: 'interactive-password' });
+  assert.equal(h.secrets.size, 0);
+  await h.core.handle({
+    type: 'success',
+    session: 's',
+    method: 'keyboard-interactive',
+  });
+  assert.equal((await h.core.read(target))?.method, 'keyboard-interactive');
+  await h.open('again');
+  const reused = await h.ask('again', { kind: 'interactive-password' });
+  assert.equal(reused.source, 'saved');
+  assert.equal(reused.value, entered.value);
+  assert.equal(h.prompts, 1);
+});
+test('an additional interactive challenge prevents saving the first response', async () => {
+  const h = harness();
+  await h.open();
+  await h.ask('s', { kind: 'interactive-password' });
+  await h.ask('s', { kind: 'manual' });
+  await h.core.handle({
+    type: 'success',
+    session: 's',
+    method: 'keyboard-interactive',
+  });
+  assert.equal(h.secrets.size, 0);
+});
+test('interactive password rejects a different success method and respects use once', async () => {
+  const h = harness();
+  await h.open();
+  await h.ask('s', { kind: 'interactive-password' });
+  await h.core.handle({ type: 'success', session: 's', method: 'password' });
+  assert.equal(h.secrets.size, 0);
+  h.answer = { value: 'once', remember: false };
+  await h.open('once');
+  await h.ask('once', { kind: 'interactive-password' });
+  await h.core.handle({
+    type: 'success',
+    session: 'once',
+    method: 'keyboard-interactive',
+  });
+  assert.equal(h.secrets.size, 0);
+});

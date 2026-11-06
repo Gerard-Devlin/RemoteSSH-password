@@ -4,23 +4,23 @@
 
 Windows x64 的 VS Code 扩展，配合 Microsoft Remote-SSH 使用。首次输入固定密码后可选择记住；只有 OpenSSH 确认密码认证成功才写入 VS Code SecretStorage。
 
-> 当前为 0.1.9 预览版，仅支持一个精确校验的 OpenSSH 构建。隔离 VS Code 环境中的 SecretStorage 跨重启测试已通过；完整 Remote-SSH 交互流程和界面视觉验收仍待完成。请先阅读[兼容范围](compatibility.md)和[测试报告](testing/2026-11-06.md)。
+> 当前为 0.2.0 预览版，仅支持一个精确校验的 OpenSSH 构建。隔离 VS Code 环境中的 SecretStorage 跨重启测试已通过；完整 Remote-SSH 交互流程和界面视觉验收仍待完成。请先阅读[兼容范围](compatibility.md)和[测试报告](testing/2026-11-06.md)。
 
 ## 从旧版迁移
 
 Publisher 现为 `Devlin`。若已安装 `local-tools` 预览版，请先在旧版运行“关闭并恢复 SSH 设置”，卸载旧扩展并重载窗口，再安装新版。旧密码不会自动迁移；新旧扩展应避免同时启用，详细步骤见[商店打包与迁移指南（英文）](marketplace.md)。
 
-如果旧版已卸载，而启用时报错的路径仍指向 `local-tools`，0.1.8 起可在启用时修复这个遗留路径。请核对恢复说明并确认启用；旧版密码不会迁移。
+如果旧版已卸载，而启用时报错的路径仍指向 `local-tools`，0.1.8 起可在启用时修复这个遗留路径。当前版本会在本地启动时自动修复该路径；旧版密码不会迁移。
 
 ## 安装与连接
 
-1. 在本地 Windows x64 VS Code 安装 Microsoft Remote-SSH，再从[应用商店](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory)安装本扩展，确认发布者为 **Devlin**。也可从 [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) 下载 `remote-ssh-password-memory-0.1.9-win32-x64.vsix`，通过“从 VSIX 安装”手动安装。
-2. 在命令面板运行 **SSH 密码记忆: 启用**，确认接入设置。
+1. 在本地 Windows x64 VS Code 安装 Microsoft Remote-SSH，再从[应用商店](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory)安装本扩展，确认发布者为 **Devlin**。也可从 [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) 下载 `remote-ssh-password-memory-0.2.0-win32-x64.vsix`，通过“从 VSIX 安装”手动安装。
+2. 安装后会自动接入，无需再运行“启用”命令或确认设置弹窗。
 3. 继续用 Remote-SSH 选择服务器，先核对首次信任的服务器指纹。
 4. 在 VS Code 隐藏密码框输入固定密码，选择“记住到本机”或“仅本次使用”。
 5. 成功认证后，可用“管理已保存密码”查看目标和指纹，不会显示密码。
 
-安装后不会自动启用。商店安装的版本会按 VS Code 的自动更新设置接收新版。密码失效时，每个连接至多自动提供一次旧密码，再请求新输入。验证码、keyboard-interactive 和密钥口令不保存。
+安装后自动启用；如果你主动关闭，会保持关闭，直到你重新启用。商店安装的版本会按 VS Code 的自动更新设置接收新版。密码失效时，每个连接至多自动提供一次旧密码，再请求新输入。普通 SSH 密码，以及经过识别的单一交互式 Password 请求，都可以选择记住。验证码、密钥口令和额外的多步骤验证不保存。
 
 ## 语言与命令
 

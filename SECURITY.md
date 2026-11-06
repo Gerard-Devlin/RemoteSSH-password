@@ -16,7 +16,7 @@ Production communication uses named pipes only; there is no listening TCP servic
 
 The bridge directory has a protected inheritable DACL for the current user. Executable-path validation is not code signing and is not a defense against same-account code substitution. An explicit but stale window route fails rather than choosing a different window. The ancestry fallback accepts only a broker whose extension-host parent is an ancestor of the calling bridge; it does not route through a common Explorer/shell ancestor.
 
-Across windows, a user-restricted coordinator deduplicates only in-flight requests for the same effective target, fingerprint and rejection state. It retains no credential cache. Each participating connection must independently report successful authentication before its extension host may save an input authorized for persistence.
+Across windows, a user-restricted coordinator deduplicates only in-flight requests for the same effective target, fingerprint, authentication kind and rejection state. It retains no credential cache. Each participating connection must independently report successful authentication before its extension host may save an input authorized for persistence.
 
 ## Server identity and success detection
 
@@ -30,11 +30,11 @@ The success path is intentionally narrow and not a general proof against all fut
 
 ## Failure and lifecycle
 
-One automatic saved-password offer per connection. Explicit rejection invalidates that candidate; disconnect/timeout alone does not. New passwords stay in memory until successful password authentication. OTP, key passphrases, keyboard-interactive and unrecognized prompts cannot create a remembered candidate. End/cancel/disable abort outstanding UI and clear candidates.
+One automatic saved-password offer per connection. Explicit rejection invalidates that candidate; disconnect/timeout alone does not. New passwords stay in memory until successful password authentication. A recognized, single Password prompt using keyboard-interactive can create a candidate only when the user selects Remember for a fixed server password. Exact pinned local callsites report prompt counts and partial success. Multiple fields, an additional prompt or partial-authentication continuation clear eligibility; OTP, key passphrases and unrecognized prompts remain manual. Stored records are bound to the successful authentication method; legacy records default to SSH password authentication. End/cancel/disable abort outstanding UI and clear candidates.
 
 Forget writes a revocation revision before deleting the credential; delayed candidates from other windows are rejected or remain unusable if a write races deletion. SecretStorage does not offer atomic cross-process compare-and-swap: a narrow racing rejection can remove a newly written value, causing another manual prompt, not cross-target disclosure. For strongest immediate removal, cancel outstanding connections before forgetting. Already-delivered answers cannot be retracted.
 
-Disabling restores only settings still equal to installed values. Direct uninstallation has no dependable VS Code callback; an intentionally retained stable bridge provides passthrough as long as its global storage and real SSH executable remain present. If those files are removed, manually restore the path as documented. No claim of automatic cleanup after user-data deletion is made.
+Installation/activation automatically sets up the two Remote-SSH user settings after executable validation. Password persistence still requires the user’s Remember choice. Setup uses a current-user-restricted storage root, an exclusive process lock, immutable version/hash helper directories, and a password-free control journal. Explicit disable persists across reload; later user SSH-setting edits suspend automatic setup rather than being overwritten. Disabling restores only settings still equal to installed values. Direct uninstallation has no dependable VS Code callback; an intentionally retained stable bridge provides passthrough as long as its global storage and real SSH executable remain present. If those files are removed, manually restore the path as documented. No claim of automatic cleanup after user-data deletion is made.
 
 ## Release hygiene
 

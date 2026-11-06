@@ -37,6 +37,7 @@ let acceptEnable = true,
   chooseDiagnostics = false,
   failSecretReads = false;
 let selectCredential = false;
+let rememberChoice = true;
 const root = process.cwd(),
   tmp = path.join(root, '.test-runtime', 'extension-' + randomUUID());
 await fs.mkdir(tmp, { recursive: true });
@@ -117,7 +118,7 @@ const api = {
     showQuickPick: async (items, options) => {
       ui.choices.push({ items, options });
       if (items.every((item) => typeof item.remember === 'boolean'))
-        return items[0];
+        return items[rememberChoice ? 0 : 1];
       inspection = items;
       return selectCredential ? items[0] : undefined;
     },
@@ -222,199 +223,105 @@ async function run(exe, args, extraEnv = {}) {
     clearTimeout(t);
   }
 }
+async function reload() {
+  exports.deactivate();
+  for (const disposable of subscriptions.splice(0)) disposable.dispose();
+  await sleep(250);
+  await exports.activate(context);
+}
 try {
   await check(
-    'activation registers commands without modifying settings',
+    'installation automatically starts password memory without a setup dialog',
     async () => {
       await exports.activate(context);
       assert.equal(commands.size, 5);
-      assert.deepEqual(settings, original);
-    },
-  );
-  await check(
-    'setup consent, unsupported SSH, and storage errors are localized and leave settings intact',
-    async () => {
-      acceptEnable = false;
-      await commands.get('sshPasswordMemory.enable')();
-      assert.deepEqual(settings, original);
-      const consent = ui.information.at(-1);
-      assert.equal(
-        consent.text,
-        locale === 'zh-cn'
-          ? '启用 SSH 密码记忆？'
-          : 'Enable SSH password memory?',
-      );
-      assert.ok(consent.options.detail.includes('remote.SSH.path'));
-      assert.ok(consent.options.detail.includes('remote.SSH.useLocalServer'));
-      assert.ok(consent.options.detail.includes('\n\n'));
-      acceptEnable = true;
-
-      const missing = path.join(tmp, 'missing-ssh.exe');
-      settings.set('path', missing);
-      const before = new Map(settings);
-      allowErrors = true;
-      chooseDiagnostics = true;
-      try {
-        await commands.get('sshPasswordMemory.enable')();
-        assert.deepEqual(settings, before);
-        const failure = ui.errors.at(-1);
-        assert.equal(
-          failure.text,
-          locale === 'zh-cn'
-            ? '无法启用密码记忆'
-            : 'Could not enable password memory',
-        );
-        assert.ok(failure.options.detail.includes(missing));
-        assert.ok(
-          failure.options.detail.includes(
-            locale === 'zh-cn'
-              ? '未启用密码记忆。'
-              : 'Password memory was not enabled.',
-          ),
-        );
-        assert.equal(
-          failure.items[0].title,
-          locale === 'zh-cn' ? '查看诊断' : 'Show Diagnostics',
-        );
-
-        failSecretReads = true;
-        await commands.get('sshPasswordMemory.manage')();
-        const storage = ui.errors.at(-1);
-        assert.equal(
-          storage.text,
-          locale === 'zh-cn' ? '操作未完成' : 'Could not complete this action',
-        );
-        assert.ok(
-          !JSON.stringify(storage).includes('synthetic storage failure'),
-        );
-      } finally {
-        failSecretReads = false;
-        allowErrors = false;
-        chooseDiagnostics = false;
-        settings.set('path', original.get('path'));
-      }
-      assert.deepEqual(settings, original);
-    },
-  );
-  await check(
-    'missing local-tools helper migrates only after consent and never restores a dead path',
-    async () => {
-      const oldHelper = path.join(
-        tmp,
-        'local-tools.remote-ssh-password-memory',
-        'bridge-v1',
-        'ssh.exe',
-      );
-      settings.set('path', oldHelper);
-      settings.set('useLocalServer', true);
-      const before = new Map(settings);
-      acceptEnable = false;
-      await commands.get('sshPasswordMemory.enable')();
-      assert.deepEqual(settings, before);
-      const consent = ui.information.at(-1);
-      assert.ok(
-        consent.options.detail.includes(
-          translate(
-            "The previous SSH helper's original settings are unavailable. A verified OpenSSH program will replace it. Disabling password memory will keep that program configured.",
-          ),
-        ),
-      );
-      assert.ok(consent.options.detail.includes(original.get('path')));
-      acceptEnable = true;
-      await commands.get('sshPasswordMemory.enable')();
+      assert.equal(settings.get('useLocalServer'), true);
+      assert.equal(settings.get('useExecServer'), true);
+      assert.ok(settings.get('path').includes('bridge-v2'));
+      assert.ok(process.env.SSHPM_WINDOW_PIPE);
+      assert.equal(ui.information.filter((m) => m.options?.modal).length, 0);
       const recovery = JSON.parse(
         await fs.readFile(
-          path.join(tmp, 'storage', 'bridge-v1', 'recovery.json'),
+          path.join(path.dirname(settings.get('path')), 'recovery.json'),
           'utf8',
         ),
       );
       assert.equal(recovery.original.path, original.get('path'));
-      assert.equal(recovery.original.useLocalServer, true);
-      const config = JSON.parse(
-        await fs.readFile(
-          path.join(tmp, 'storage', 'bridge-v1', 'bridge.json'),
-          'utf8',
-        ),
-      );
-      assert.equal(config.realSSH, original.get('path'));
-      assert.equal(secrets.size, 0);
-      await commands.get('sshPasswordMemory.disable')();
-      assert.equal(settings.get('path'), original.get('path'));
-      assert.equal(settings.get('useLocalServer'), true);
-      settings.set('useLocalServer', original.get('useLocalServer'));
+      assert.equal(recovery.original.useLocalServer, false);
     },
   );
   await check(
-    'legacy recovery carries original settings without changing the old journal',
+    'explicit disable survives reload and explicit enable needs no setup dialog',
     async () => {
-      const directory = path.join(
-        tmp,
-        'local-tools.remote-ssh-password-memory',
-        'bridge-v1',
-      );
-      await fs.mkdir(directory, { recursive: true });
-      const recovery = JSON.stringify({
-        bridgePath: path.join(directory, 'ssh.exe'),
-        original: { path: original.get('path'), useLocalServer: false },
-      });
-      await fs.writeFile(path.join(directory, 'recovery.json'), recovery);
-      settings.set('path', path.join(directory, 'ssh.exe'));
-      settings.set('useLocalServer', true);
-      await commands.get('sshPasswordMemory.enable')();
-      const consent = ui.information.filter((m) => m.options?.modal).at(-1);
-      assert.ok(
-        consent.options.detail.includes(
-          translate(
-            'The previous SSH helper will be replaced. Its original connection settings will be preserved for recovery.',
-          ),
-        ),
-      );
       await commands.get('sshPasswordMemory.disable')();
       assert.deepEqual(settings, original);
-      assert.equal(
-        await fs.readFile(path.join(directory, 'recovery.json'), 'utf8'),
-        recovery,
-      );
-      assert.equal(secrets.size, 0);
+      await reload();
+      assert.deepEqual(settings, original);
+      await commands.get('sshPasswordMemory.enable')();
+      assert.equal(settings.get('useLocalServer'), true);
+      assert.equal(ui.information.filter((m) => m.options?.modal).length, 0);
     },
   );
   await check(
-    'confirmed enable journals originals and starts the actual broker',
+    'missing preview helper is repaired automatically during activation',
     async () => {
-      await commands.get('sshPasswordMemory.enable')();
-      assert.equal(settings.get('useLocalServer'), true);
-      assert.equal(settings.get('useExecServer'), true);
-      assert.ok(settings.get('path').startsWith(tmp));
-      assert.ok(process.env.SSHPM_WINDOW_PIPE);
-      const journal = JSON.parse(
+      await commands.get('sshPasswordMemory.disable')();
+      context.globalStorageUri.fsPath = path.join(
+        tmp,
+        'legacy-scenario',
+        'devlin.remote-ssh-password-memory',
+      );
+      const missing = path.join(
+        tmp,
+        'legacy-scenario',
+        'local-tools.remote-ssh-password-memory',
+        'bridge-v1',
+        'ssh.exe',
+      );
+      settings.set('path', missing);
+      settings.set('useLocalServer', true);
+      await reload();
+      assert.ok(
+        settings.get('path').startsWith(context.globalStorageUri.fsPath),
+      );
+      const recovery = JSON.parse(
         await fs.readFile(
-          path.join(tmp, 'storage', 'bridge-v1', 'recovery.json'),
+          path.join(path.dirname(settings.get('path')), 'recovery.json'),
           'utf8',
         ),
       );
-      assert.equal(journal.original.path, original.get('path'));
-      assert.equal(journal.original.useLocalServer, false);
+      assert.equal(recovery.original.path, original.get('path'));
+      await commands.get('sshPasswordMemory.disable')();
+      assert.equal(settings.get('path'), original.get('path'));
+      settings.set('useLocalServer', false);
+      context.globalStorageUri.fsPath = path.join(tmp, 'active-storage');
+      await reload();
+      assert.equal(settings.get('useLocalServer'), true);
     },
   );
   await check(
-    'enabling again reports the current state without repeating consent',
+    'storage errors show a localized diagnostics action',
     async () => {
-      const before = new Map(settings);
-      const confirmations = ui.information.filter(
-        (m) => m.options?.modal,
-      ).length;
-      await commands.get('sshPasswordMemory.enable')();
-      assert.deepEqual(settings, before);
-      assert.equal(
-        ui.information.filter((m) => m.options?.modal).length,
-        confirmations,
-      );
-      assert.equal(
-        messages.at(-1),
-        locale === 'zh-cn'
-          ? '密码记忆已启用。'
-          : 'Password memory is already on.',
-      );
+      failSecretReads = true;
+      allowErrors = true;
+      chooseDiagnostics = true;
+      try {
+        await commands.get('sshPasswordMemory.manage')();
+        const error = ui.errors.at(-1);
+        assert.equal(
+          error.text,
+          locale === 'zh-cn' ? '操作未完成' : 'Could not complete this action',
+        );
+        assert.equal(
+          error.items[0].title,
+          locale === 'zh-cn' ? '查看诊断' : 'Show Diagnostics',
+        );
+        assert.ok(!JSON.stringify(error).includes('synthetic storage failure'));
+      } finally {
+        failSecretReads = false;
+        allowErrors = false;
+        chooseDiagnostics = false;
+      }
     },
   );
   const fixture = spawn(path.join(root, 'bin', 'testserver.exe'), [], {
@@ -641,75 +548,125 @@ try {
       assert.ok(!messages.some((m) => m.includes(password)));
     },
   );
+  async function interactiveServer(config = {}) {
+    const child = spawn(path.join(root, 'bin', 'testserver.exe'), [], {
+      windowsHide: true,
+      stdio: 'pipe',
+    });
+    children.push(child);
+    child.stderr.resume();
+    let ready;
+    createInterface({ input: child.stdout }).on('line', (line) => {
+      const m = JSON.parse(line);
+      if (m.type === 'ready') ready = m;
+    });
+    child.stdin.write(
+      JSON.stringify({ password, keyboardInteractive: true, ...config }) + '\n',
+    );
+    for (let i = 0; !ready && i < 250; i++) await sleep(20);
+    assert.ok(ready);
+    const request = [...args];
+    request[request.indexOf('-p') + 1] = ready.address.split(':').at(-1);
+    request[request.indexOf('PreferredAuthentications=password')] =
+      'PreferredAuthentications=keyboard-interactive';
+    return { child, request };
+  }
   await check(
-    'manual authentication separates server prompt from localized help and never saves',
+    'interactive fixed password is saved after success, reused, and replaced after rejection',
     async () => {
-      const manualFixture = spawn(
-        path.join(root, 'bin', 'testserver.exe'),
-        [],
-        {
-          windowsHide: true,
-          stdio: 'pipe',
-        },
-      );
-      children.push(manualFixture);
-      manualFixture.stderr.resume();
-      let manualReady;
-      createInterface({ input: manualFixture.stdout }).on('line', (line) => {
-        const message = JSON.parse(line);
-        if (message.type === 'ready') manualReady = message;
-      });
-      manualFixture.stdin.write(
-        JSON.stringify({ password, keyboardInteractive: true }) + '\n',
-      );
-      for (let i = 0; !manualReady && i < 250; i++) await sleep(20);
-      assert.ok(manualReady);
-      const manualArgs = [...args];
-      manualArgs[manualArgs.indexOf('-p') + 1] = manualReady.address
-        .split(':')
-        .at(-1);
-      manualArgs[manualArgs.indexOf('PreferredAuthentications=password')] =
-        'PreferredAuthentications=keyboard-interactive';
-      const promptsBefore = inputCount;
-      const choicesBefore = ui.choices.length;
-      const credentialsBefore = [...secrets.keys()].filter((k) =>
-        k.startsWith('credential.'),
-      ).length;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const response = await run(bridge, manualArgs);
-        assert.equal(response.code, 0);
-        assert.equal(response.stdout, 'fixture-ok\n');
-        const input = ui.inputs.at(-1);
+      const before = new Set(secrets.keys()),
+        prompts = inputCount;
+      const server = await interactiveServer();
+      try {
+        assert.equal((await run(bridge, server.request)).code, 0);
+        assert.equal(inputCount, prompts + 1);
         assert.equal(
-          input.prompt,
-          locale === 'zh-cn'
-            ? '本次输入仅用于当前连接，不会保存。'
-            : 'This response is used for this connection only and will not be saved.',
+          ui.inputs
+            .at(-1)
+            .title.startsWith(locale === 'zh-cn' ? 'SSH 密码' : 'SSH password'),
+          true,
         );
-        assert.ok(
-          input.placeHolder.startsWith(
-            locale === 'zh-cn' ? '验证提示：' : 'Authentication request: ',
+        assert.equal(
+          ui.inputs.at(-1).prompt,
+          translate(
+            'You can choose whether to remember this password in the next step.',
           ),
         );
-        assert.ok(input.placeHolder.includes('fixture@127.0.0.1'));
-        assert.ok(input.placeHolder.includes('Password:'));
-        assert.ok(
-          !input.prompt.includes('fixture@') &&
-            !input.prompt.includes('Password:'),
+        const choice = ui.choices.at(-1);
+        assert.equal(
+          choice.items[0].description,
+          translate(
+            'For your fixed server password; never choose this for a verification code',
+          ),
         );
-        assert.equal(input.password, true);
+        const key = [...secrets.keys()].find(
+          (k) => k.startsWith('credential.') && !before.has(k),
+        );
+        assert.ok(key);
+        assert.equal(
+          JSON.parse(secrets.get(key)).method,
+          'keyboard-interactive',
+        );
+        assert.equal((await run(bridge, server.request)).code, 0);
+        assert.equal(inputCount, prompts + 1);
+        const replacement = 'replacement-interactive-' + randomUUID();
+        inputAnswer = replacement;
+        server.child.stdin.write(
+          JSON.stringify({ password: replacement }) + '\n',
+        );
+        await sleep(100);
+        assert.equal((await run(bridge, server.request)).code, 0);
+        assert.equal(inputCount, prompts + 2);
+        assert.equal(JSON.parse(secrets.get(key)).password, replacement);
+        assert.ok(!messages.join('\n').includes(replacement));
+      } finally {
+        inputAnswer = password;
+        server.child.stdin.end();
+        for (const key of [...secrets.keys()])
+          if (!before.has(key)) secrets.delete(key);
       }
-      assert.equal(inputCount, promptsBefore + 2);
-      assert.equal(
-        ui.choices.length,
-        choicesBefore,
-        'Manual input must not offer persistence',
-      );
-      assert.equal(
-        [...secrets.keys()].filter((k) => k.startsWith('credential.')).length,
-        credentialsBefore,
-      );
-      manualFixture.stdin.end();
+    },
+  );
+  await check('Use Once never saves an interactive password', async () => {
+    const before = new Set(secrets.keys()),
+      prompts = inputCount;
+    const server = await interactiveServer();
+    rememberChoice = false;
+    try {
+      assert.equal((await run(bridge, server.request)).code, 0);
+      assert.equal((await run(bridge, server.request)).code, 0);
+      assert.equal(inputCount, prompts + 2);
+      assert.deepEqual(new Set(secrets.keys()), before);
+    } finally {
+      rememberChoice = true;
+      server.child.stdin.end();
+    }
+  });
+  await check(
+    'verification codes and multi-step challenges do not persist credentials',
+    async () => {
+      for (const config of [
+        { prompt: 'Verification code: ' },
+        { prompts: ['Password: ', 'Verification code: '], code: password },
+        { secondPrompt: 'Verification code: ', code: password },
+        { partial: true, secondPrompt: 'Verification code: ', code: password },
+      ]) {
+        const before = new Set(secrets.keys());
+        const server = await interactiveServer(config);
+        try {
+          const response = await run(bridge, server.request);
+          assert.equal(response.code, 0, response.stderr);
+          assert.deepEqual(new Set(secrets.keys()), before);
+          assert.equal(
+            ui.inputs.at(-1).prompt,
+            translate(
+              'This verification request cannot be remembered. Enter a response for this connection.',
+            ),
+          );
+        } finally {
+          server.child.stdin.end();
+        }
+      }
     },
   );
   await check(
@@ -764,7 +721,7 @@ try {
     assert.equal(
       JSON.parse(
         await fs.readFile(
-          path.join(tmp, 'storage', 'bridge-v1', 'bridge.json'),
+          path.join(path.dirname(bridge), 'bridge.json'),
           'utf8',
         ),
       ).enabled,

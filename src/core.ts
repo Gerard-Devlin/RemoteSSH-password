@@ -40,6 +40,7 @@ export interface UI {
     cacheable: boolean,
     failed: boolean,
     signal?: AbortSignal,
+    method?: string,
   ): Promise<Reply>;
   trust(
     target: Target,
@@ -51,6 +52,7 @@ export interface UI {
   cancel(session: string): void;
 }
 export interface RecordValue {
+  method?: 'password' | 'keyboard-interactive';
   target: Target;
   fingerprint: string;
   password: string;
@@ -59,6 +61,7 @@ export interface RecordValue {
   updated: string;
 }
 interface Session {
+  method?: 'password' | 'keyboard-interactive';
   target: Target;
   automatic: boolean;
   candidate?: Reply;
@@ -124,6 +127,9 @@ export class CredentialCore {
         keyFor(r.target) === keyFor(t) &&
         validFingerprint(r.fingerprint) &&
         validPassword(r.password) &&
+        (r.method === undefined ||
+          r.method === 'password' ||
+          r.method === 'keyboard-interactive') &&
         typeof r.ticket === 'string' &&
         (r.revision ?? '') ===
           ((await this.secrets.get(revocationKey(keyFor(t)))) ?? '')
@@ -202,7 +208,7 @@ export class CredentialCore {
       const candidate = s.candidate;
       s.candidate = undefined;
       if (
-        m.method === 'password' &&
+        m.method === s.method &&
         candidate?.remember &&
         validPassword(candidate.value) &&
         validFingerprint(s.fingerprint)
@@ -215,6 +221,7 @@ export class CredentialCore {
           return { canceled: true };
         const record: RecordValue = {
           target: s.target,
+          method: s.method,
           fingerprint: s.fingerprint,
           password: candidate.value,
           ticket: candidate.ticket!,
@@ -239,11 +246,18 @@ export class CredentialCore {
         m.fingerprint,
         s.abort.signal,
       );
+    const method =
+      m.kind === 'password'
+        ? 'password'
+        : m.kind === 'interactive-password'
+          ? 'keyboard-interactive'
+          : undefined;
     const cacheable =
-      m.kind === 'password' &&
+      method !== undefined &&
       m.verified === true &&
       validFingerprint(m.fingerprint);
     if (!cacheable) {
+      s.method = undefined;
       this.ui.status?.('manual');
       s.candidate = undefined;
       return this.ui.ask(
@@ -255,11 +269,13 @@ export class CredentialCore {
       );
     }
     s.fingerprint = m.fingerprint;
+    s.method = method;
     const revision =
       (await this.secrets.get(revocationKey(keyFor(s.target)))) ?? '';
     const saved = await this.read(s.target);
     if (s.ended || epoch !== this.generation) return { canceled: true };
     const mismatch = !!saved && saved.fingerprint !== m.fingerprint;
+    const sameMethod = !!saved && (saved.method ?? 'password') === method;
     if (mismatch) this.ui.changed(s.target);
     if (m.type === 'shared') {
       const r = m.reply;
@@ -270,13 +286,16 @@ export class CredentialCore {
         (r.revision ?? '') !== revision
       )
         return { canceled: true };
-      if (r.source === 'saved' && (s.automatic || m.failed || mismatch))
+      if (
+        r.source === 'saved' &&
+        (s.automatic || m.failed || mismatch || !sameMethod)
+      )
         return this.prompt(s, m, cacheable);
       s.automatic ||= r.source === 'saved';
       s.candidate = r;
       return r;
     }
-    if (saved && !s.automatic && !m.failed && !mismatch) {
+    if (saved && sameMethod && !s.automatic && !m.failed && !mismatch) {
       s.automatic = true;
       const r = {
         value: saved.password,
@@ -306,7 +325,8 @@ export class CredentialCore {
     m: Message,
     cacheable: boolean,
   ): Promise<Reply> {
-    const key = keyFor(s.target) + '|' + m.fingerprint + '|' + !!m.failed;
+    const key =
+      keyFor(s.target) + '|' + m.kind + '|' + m.fingerprint + '|' + !!m.failed;
     const epoch = this.generation;
     const revision =
       (await this.secrets.get(revocationKey(keyFor(s.target)))) ?? '';
@@ -315,7 +335,14 @@ export class CredentialCore {
     if (!pending) {
       const abort = new AbortController();
       const promise = this.ui
-        .ask(s.target, m.prompt ?? '', cacheable, !!m.failed, abort.signal)
+        .ask(
+          s.target,
+          m.prompt ?? '',
+          cacheable,
+          !!m.failed,
+          abort.signal,
+          s.method,
+        )
         .then((r) => ({ ...r, source: 'input', ticket: randomUUID() }));
       pending = { promise, abort, users: new Set() };
       this.pending.set(key, pending);

@@ -1,14 +1,8 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { watchFile, unwatchFile } from 'node:fs';
 import * as path from 'node:path';
-import {
-  spawn,
-  ChildProcessWithoutNullStreams,
-  execFile,
-} from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn, ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import {
   CredentialCore,
@@ -18,24 +12,12 @@ import {
   RecordValue,
   keyFor,
 } from './core';
-import {
-  restoration,
-  OwnedSettings,
-  managedBridgeDirectory,
-  selectSSHSettings,
-} from './settings';
-import { TESTED_SSH_SHA256 } from './compatibility';
+import { OwnedSettings } from './settings';
+import { SetupManager } from './setup';
 import { parseHostIdentity, serverAddress } from './hostIdentity';
-const execute = promisify(execFile);
 const stateKey = 'ownedSettings.v1';
 const indexKey = 'credentialIndex.v1';
 type Metadata = Omit<RecordValue, 'password'>;
-interface BridgeConfig {
-  realSSHHash: string;
-  realSSH: string;
-  realSCP: string;
-  enabled: boolean;
-}
 let runtime: Runtime | undefined;
 const label = (t: Target) => t.user + '@' + serverAddress(t);
 class ActionError extends Error {
@@ -73,14 +55,6 @@ function formatSavedTime(value: string): string {
     return vscode.l10n.t('Unknown');
   }
 }
-async function atomicJSON(file: string, data: unknown) {
-  const temp = file + '.' + process.pid + '.tmp';
-  await fs.writeFile(temp, JSON.stringify(data, null, 2), {
-    encoding: 'utf8',
-    mode: 0o600,
-  });
-  await fs.rename(temp, file);
-}
 class Runtime implements vscode.Disposable {
   private broker?: ChildProcessWithoutNullStreams;
   private core: CredentialCore;
@@ -96,6 +70,8 @@ class Runtime implements vscode.Disposable {
   private actions: Promise<unknown> = Promise.resolve();
   private restart?: NodeJS.Timeout;
   private bridgeDir: string;
+  private setup?: SetupManager;
+  private setupAttempts = 0;
   private route?: string;
   private previousRoute = process.env.SSHPM_WINDOW_PIPE;
   constructor(private context: vscode.ExtensionContext) {
@@ -125,7 +101,7 @@ class Runtime implements vscode.Disposable {
           };
           this.output.appendLine(messages[event]);
         },
-        ask: (t, p, c, f, s) => this.input(t, p, c, f, s),
+        ask: (t, p, c, f, s, m) => this.input(t, p, c, f, s, m),
         trust: (t, p, f, s) => this.trust(t, p, f, s),
         changed: (t) => {
           void vscode.window.showWarningMessage(
@@ -147,7 +123,10 @@ class Runtime implements vscode.Disposable {
     );
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration('remote.SSH.path'))
+        if (
+          e.affectsConfiguration('remote.SSH.path') ||
+          e.affectsConfiguration('remote.SSH.useLocalServer')
+        )
           void this.command(() => this.reconcile()).catch(() => {});
       }),
     );
@@ -175,6 +154,7 @@ class Runtime implements vscode.Disposable {
     cacheable: boolean,
     failed: boolean,
     signal?: AbortSignal,
+    method?: string,
   ): Promise<Reply> {
     return this.serial(async () => {
       if (!this.enabled || signal?.aborted) return { canceled: true };
@@ -195,7 +175,7 @@ class Runtime implements vscode.Disposable {
                     'You can choose whether to remember this password in the next step.',
                   )
               : vscode.l10n.t(
-                  'This response is used for this connection only and will not be saved.',
+                  'This verification request cannot be remembered. Enter a response for this connection.',
                 ),
             placeHolder: cacheable
               ? vscode.l10n.t('Enter server password')
@@ -228,9 +208,14 @@ class Runtime implements vscode.Disposable {
             {
               label: vscode.l10n.t('Remember on This Device'),
               remember: true,
-              description: vscode.l10n.t(
-                'Save after a successful sign-in; fill automatically next time',
-              ),
+              description:
+                method === 'keyboard-interactive'
+                  ? vscode.l10n.t(
+                      'For your fixed server password; never choose this for a verification code',
+                    )
+                  : vscode.l10n.t(
+                      'Save after a successful sign-in; fill automatically next time',
+                    ),
             },
             {
               label: vscode.l10n.t('Use Once'),
@@ -311,48 +296,93 @@ class Runtime implements vscode.Disposable {
   private config() {
     return vscode.workspace.getConfiguration('remote.SSH');
   }
-  private async bridgeConfig(): Promise<BridgeConfig | undefined> {
-    try {
-      return JSON.parse(
-        await fs.readFile(path.join(this.bridgeDir, 'bridge.json'), 'utf8'),
-      );
-    } catch {
-      return undefined;
-    }
-  }
   command<T>(work: () => Promise<T> | T): Promise<T> {
     const next = this.actions.then(work);
     this.actions = next.catch(() => {});
     return next;
   }
-  private async reconcile() {
-    if (this.stopping) return;
-    const cfg = await this.bridgeConfig();
-    const ownsPath =
-      this.config().get<string>('path') ===
-      path.join(this.bridgeDir, 'ssh.exe');
-    if (cfg?.enabled && ownsPath) {
-      this.enabled = true;
-      await this.launch();
-    } else if (this.enabled) {
-      this.enabled = false;
-      this.stopBroker();
-      this.core.clear();
+  private async initializeSetup() {
+    if (this.setup) return;
+    const manifest = JSON.parse(
+      await fs.readFile(
+        path.join(this.context.extensionPath, 'package.json'),
+        'utf8',
+      ),
+    );
+    this.setup = new SetupManager({
+      storage: this.context.globalStorageUri.fsPath,
+      extensionPath: this.context.extensionPath,
+      version: manifest.version,
+      legacyOwned: this.context.globalState.get<OwnedSettings>(stateKey),
+      adapter: {
+        read: () => ({
+          path: this.config().inspect<string>('path')?.globalValue,
+          useLocalServer:
+            this.config().inspect<boolean>('useLocalServer')?.globalValue,
+        }),
+        effectivePath: () => this.config().get<string>('path'),
+        write: async (key, value) => {
+          await this.config().update(
+            key,
+            value,
+            vscode.ConfigurationTarget.Global,
+          );
+        },
+        start: async (directory) => {
+          if (directory !== this.bridgeDir) {
+            this.stopBroker();
+            this.core.clear();
+          }
+          this.bridgeDir = directory;
+          this.enabled = true;
+          await this.launch();
+        },
+        stop: () => {
+          this.enabled = false;
+          this.stopBroker();
+          this.core.clear();
+        },
+      },
+    });
+  }
+  setupFailed() {
+    this.output.appendLine(
+      vscode.l10n.t(
+        'Password memory could not start automatically. Reload the local VS Code window or check diagnostics.',
+      ),
+    );
+    if (!this.stopping && this.setupAttempts < 3) {
+      const delay = 1000 * 2 ** this.setupAttempts++;
+      if (this.restart) clearTimeout(this.restart);
+      this.restart = setTimeout(
+        () =>
+          void this.command(() => this.reconcile()).catch(() =>
+            this.setupFailed(),
+          ),
+        delay,
+      );
     }
+  }
+  private async reconcile() {
+    if (this.stopping || !this.setup) return;
+    await this.setup.ensure();
   }
   async start() {
     if (process.platform !== 'win32' || process.arch !== 'x64') return;
+    await this.initializeSetup();
     if (!this.watching) {
       this.watching = true;
       watchFile(
-        path.join(this.bridgeDir, 'bridge.json'),
-        { interval: 1000, persistent: false },
+        this.setup!.controlPath,
+        { interval: 500, persistent: false },
         () => {
-          void this.command(() => this.reconcile()).catch(() => {});
+          void this.command(() => this.reconcile()).catch(() =>
+            this.setupFailed(),
+          );
         },
       );
     }
-    await this.reconcile();
+    await this.command(() => this.reconcile()).catch(() => this.setupFailed());
   }
   private async launch() {
     if (this.broker || !this.enabled || this.stopping) return;
@@ -428,7 +458,7 @@ class Runtime implements vscode.Disposable {
       readyResolve();
       this.output.appendLine(
         vscode.l10n.t(
-          'Could not start the local authentication service. Disable password memory, then enable it again.',
+          'Could not start the local authentication service. Reload the local VS Code window and reconnect.',
         ),
       );
     });
@@ -443,10 +473,10 @@ class Runtime implements vscode.Disposable {
       if (!this.stopping && this.enabled && healthy)
         this.restart = setTimeout(
           () =>
-            void this.launch().catch(() =>
+            void this.reconcile().catch(() =>
               this.output.appendLine(
                 vscode.l10n.t(
-                  'Could not restart the local authentication service. Disable password memory, then enable it again.',
+                  'Could not restart the local authentication service. Reload the local VS Code window and reconnect.',
                 ),
               ),
             ),
@@ -458,7 +488,7 @@ class Runtime implements vscode.Disposable {
       this.stopBroker();
       throw new ActionError(
         vscode.l10n.t('Could not start the authentication service'),
-        vscode.l10n.t('Disable password memory, then enable it again.'),
+        vscode.l10n.t('Reload the local VS Code window and reconnect.'),
       );
     }
   }
@@ -469,225 +499,24 @@ class Runtime implements vscode.Disposable {
       );
       return;
     }
-    const previous = this.context.globalState.get<OwnedSettings>(stateKey);
-    if (previous) {
-      const current = await this.bridgeConfig();
-      if (
-        current?.enabled &&
-        this.config().get<string>('path') === previous.bridgePath
-      ) {
-        await this.start();
-        await vscode.window.showInformationMessage(
-          vscode.l10n.t('Password memory is already on.'),
-        );
-        return;
-      }
-      await this.disable(false);
-    }
-    const cfg = this.config();
-    const currentSettings = {
-      path: cfg.inspect<string>('path')?.globalValue,
-      useLocalServer: cfg.inspect<boolean>('useLocalServer')?.globalValue,
-    };
-    const defaultSSH = path.join(
-      process.env.WINDIR || 'C:\\Windows',
-      'System32',
-      'OpenSSH',
-      'ssh.exe',
-    );
-    const knownDirectories = [
-      this.bridgeDir,
-      path.join(
-        path.dirname(this.context.globalStorageUri.fsPath),
-        'local-tools.remote-ssh-password-memory',
-        'bridge-v1',
-      ),
-    ];
-    const previousDirectory = managedBridgeDirectory(
-      currentSettings.path,
-      knownDirectories,
-    );
-    const readMetadata = async (name: string): Promise<unknown> => {
-      if (!previousDirectory) return;
-      try {
-        return JSON.parse(
-          await fs.readFile(path.join(previousDirectory, name), 'utf8'),
-        );
-      } catch {
-        return undefined;
-      }
-    };
-    const selection = selectSSHSettings(
-      currentSettings,
-      defaultSSH,
-      knownDirectories,
-      await readMetadata('recovery.json'),
-      await readMetadata('bridge.json'),
-    );
-    const { original, realSSH } = selection;
-    const realSCP = path.join(path.dirname(realSSH), 'scp.exe');
-    try {
-      const version = await execute(realSSH, ['-V'], {
-        windowsHide: true,
-        timeout: 5000,
-      });
-      if (
-        !(version.stderr + version.stdout).includes(
-          'OpenSSH_for_Windows_9.5p2',
-        ) ||
-        createHash('sha256')
-          .update(await fs.readFile(realSSH))
-          .digest('hex') !== TESTED_SSH_SHA256
-      )
-        throw new Error('unsupported');
-      await fs.access(realSCP);
-    } catch {
-      await showProblem(
-        vscode.l10n.t('Could not enable password memory'),
-        [
-          vscode.l10n.t(
-            'The SSH program is missing, unsupported, or does not have scp.exe beside it.',
-          ),
-          vscode.l10n.t('SSH program: {0}', realSSH),
-          '',
-          vscode.l10n.t(
-            'This preview requires the OpenSSH 9.5p2 build listed in the compatibility guide.',
-          ),
-          vscode.l10n.t('Password memory was not enabled.'),
-        ].join('\n'),
-        () => this.diagnostics(),
-      );
-      return;
-    }
-    const accepted = await vscode.window.showInformationMessage(
-      vscode.l10n.t('Enable SSH password memory?'),
-      {
-        modal: true,
-        detail: [
-          vscode.l10n.t('Keep using Remote-SSH to connect to your servers.'),
-          '',
-          ...(selection.migration === 'none'
-            ? []
-            : [
-                selection.migration === 'recovered'
-                  ? vscode.l10n.t(
-                      'The previous SSH helper will be replaced. Its original connection settings will be preserved for recovery.',
-                    )
-                  : vscode.l10n.t(
-                      "The previous SSH helper's original settings are unavailable. A verified OpenSSH program will replace it. Disabling password memory will keep that program configured.",
-                    ),
-                vscode.l10n.t('SSH program: {0}', realSSH),
-                '',
-              ]),
-          vscode.l10n.t('User settings to change:'),
-          vscode.l10n.t("remote.SSH.path → this extension's local SSH helper"),
-          vscode.l10n.t('remote.SSH.useLocalServer → true'),
-          '',
-          vscode.l10n.t(
-            'Passwords you choose to remember are saved locally in encrypted storage after a successful sign-in.',
-          ),
-          vscode.l10n.t(
-            'You confirm server fingerprints yourself. Server notices shown before authentication are hidden while password memory is on.',
-          ),
-          '',
-          vscode.l10n.t(
-            'The local SSH helper stays on this device after disabling or uninstalling, to support ordinary SSH connections.',
-          ),
-        ].join('\n'),
-      },
-      vscode.l10n.t('Enable Password Memory'),
-    );
-    if (!accepted) return;
-    await fs.mkdir(this.bridgeDir, { recursive: true });
-    await execute(
-      path.join(this.context.extensionPath, 'bin', 'broker.exe'),
-      ['--secure-directory', this.bridgeDir],
-      { windowsHide: true, timeout: 5000 },
-    );
-    for (const file of ['ssh.exe', 'scp.exe', 'askpass.exe', 'broker.exe']) {
-      const source = path.join(this.context.extensionPath, 'bin', file),
-        dest = path.join(this.bridgeDir, file);
-      const bytes = await fs.readFile(source);
-      let same = false;
-      try {
-        same = bytes.equals(await fs.readFile(dest));
-      } catch {}
-      if (!same) await fs.copyFile(source, dest);
-    }
-    await atomicJSON(path.join(this.bridgeDir, 'bridge.json'), {
-      realSSH,
-      realSCP,
-      realSSHHash: createHash('sha256')
-        .update(await fs.readFile(realSSH))
-        .digest('hex'),
-      enabled: true,
-    });
-    const owned: OwnedSettings = {
-      original,
-      bridgePath: path.join(this.bridgeDir, 'ssh.exe'),
-    };
-    // Journal first: activation/disable can recover an interrupted settings update.
-    await this.context.globalState.update(stateKey, owned);
-    await atomicJSON(path.join(this.bridgeDir, 'recovery.json'), owned);
-    this.enabled = true;
-    try {
-      await this.launch();
-      await cfg.update(
-        'path',
-        owned.bridgePath,
-        vscode.ConfigurationTarget.Global,
-      );
-      await cfg.update(
-        'useLocalServer',
-        true,
-        vscode.ConfigurationTarget.Global,
-      );
-    } catch {
-      await this.disable(false);
+    await this.initializeSetup();
+    const status = await this.setup!.ensure(true);
+    if (status !== 'ready')
       throw new ActionError(
-        vscode.l10n.t('Could not update SSH settings'),
-        vscode.l10n.t(
-          'Automatic recovery was attempted. Check remote.SSH.path in your user settings before trying again.',
-        ),
+        vscode.l10n.t('Could not start the authentication service'),
+        vscode.l10n.t('Reload the local VS Code window and reconnect.'),
       );
-    }
-    await vscode.window.showInformationMessage(
+    void vscode.window.showInformationMessage(
       vscode.l10n.t(
         'Password memory is on. Connect to a host with Remote-SSH.',
       ),
     );
   }
   async disable(notify = true) {
-    this.enabled = false;
-    this.stopBroker();
-    this.core.clear();
-    const bridge = await this.bridgeConfig();
-    if (bridge)
-      await atomicJSON(path.join(this.bridgeDir, 'bridge.json'), {
-        ...bridge,
-        enabled: false,
-      });
-    const owned = this.context.globalState.get<OwnedSettings>(stateKey);
-    if (owned) {
-      const cfg = this.config();
-      const changes = restoration(
-        {
-          path: cfg.inspect<string>('path')?.globalValue,
-          useLocalServer: cfg.inspect<boolean>('useLocalServer')?.globalValue,
-        },
-        owned,
-      );
-      for (const [k, v] of Object.entries(changes))
-        await cfg.update(k, v.value, vscode.ConfigurationTarget.Global);
-      await this.context.globalState.update(stateKey, undefined);
-      this.output.appendLine(
-        vscode.l10n.t(
-          'Connection settings were restored unless you had changed them manually.',
-        ),
-      );
-    }
+    await this.initializeSetup();
+    await this.setup!.disable();
     if (notify)
-      await vscode.window.showInformationMessage(
+      void vscode.window.showInformationMessage(
         vscode.l10n.t('Password memory is off. Saved passwords are kept.'),
       );
   }
@@ -773,7 +602,7 @@ class Runtime implements vscode.Disposable {
     );
     this.output.appendLine(
       vscode.l10n.t(
-        'Only SSH password authentication can be remembered. Verification codes, interactive challenges, and key passphrases must be entered each time.',
+        'Password memory starts automatically. Fixed passwords can be remembered; verification codes and key passphrases are entered each time.',
       ),
     );
     this.output.show();
@@ -794,7 +623,7 @@ class Runtime implements vscode.Disposable {
   }
   dispose() {
     if (this.stopping) return;
-    unwatchFile(path.join(this.bridgeDir, 'bridge.json'));
+    if (this.setup) unwatchFile(this.setup.controlPath);
     this.stopping = true;
     this.stopBroker();
     this.core.clear();
@@ -831,7 +660,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.commands.registerCommand('sshPasswordMemory.' + name, run(fn)),
     );
-  await runtime.start().catch(() => runtime!.diagnostics());
+  await runtime.start().catch(() => runtime!.setupFailed());
 }
 export function deactivate() {
   runtime?.dispose();

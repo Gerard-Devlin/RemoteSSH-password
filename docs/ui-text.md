@@ -31,22 +31,22 @@
 
 ## Reviewed surfaces in 0.1.4
 
-| Surface             | Presentation and intent                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Enable              | Short question plus separate connection, setting, password, trust, and retained-helper details. Cancel leaves settings intact. |
-| Already enabled     | State confirmation without repeating consent or changing settings.                                                             |
-| Password input      | Connection in the title, a localized placeholder, and a short explanation of the next step.                                    |
-| Rejected password   | Ask the user to try again; do not imply that the server password must be reset.                                                |
-| Manual challenge    | Explain that the response is not saved; preserve the authentication request in a labeled placeholder.                          |
-| Input validation    | Distinguish missing input, forbidden line breaks/null characters, and excessive byte length.                                   |
-| Persistence menu    | Clear remember/use-once choices and their consequences.                                                                        |
-| Host trust          | Server, key type, exact fingerprint, and an explicit action. Unrecognized requests use a neutral Continue Connection action.   |
-| Saved passwords     | A short list title, a selection hint, and a readable last-sign-in time.                                                        |
-| Delete              | Explicit confirmation of local-only deletion; cancellation keeps the saved value.                                              |
-| Disable             | Confirm that the feature is off and saved passwords are kept. Setting restoration is recorded in diagnostics.                  |
-| Errors              | Separate title and action guidance, with a Show Diagnostics button; do not display raw exception contents.                     |
-| Diagnostics         | One labeled state or value per line. Use the same service/helper terms as other screens.                                       |
-| Native path failure | Static English/Chinese text with the setting to recover; never echo arbitrary error data.                                      |
+| Surface             | Presentation and intent                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Enable              | Automatic startup with no setup confirmation. The Enable command is optional recovery after deliberate off/suspension.       |
+| Already enabled     | Automatic startup is idempotent and keeps existing original settings.                                                        |
+| Password input      | Connection in the title, a localized placeholder, and a short explanation of the next step.                                  |
+| Rejected password   | Ask the user to try again; do not imply that the server password must be reset.                                              |
+| Manual challenge    | Explain that the response is not saved; preserve the authentication request in a labeled placeholder.                        |
+| Input validation    | Distinguish missing input, forbidden line breaks/null characters, and excessive byte length.                                 |
+| Persistence menu    | Clear remember/use-once choices and their consequences.                                                                      |
+| Host trust          | Server, key type, exact fingerprint, and an explicit action. Unrecognized requests use a neutral Continue Connection action. |
+| Saved passwords     | A short list title, a selection hint, and a readable last-sign-in time.                                                      |
+| Delete              | Explicit confirmation of local-only deletion; cancellation keeps the saved value.                                            |
+| Disable             | Confirm that the feature is off and saved passwords are kept. Setting restoration is recorded in diagnostics.                |
+| Errors              | Separate title and action guidance, with a Show Diagnostics button; do not display raw exception contents.                   |
+| Diagnostics         | One labeled state or value per line. Use the same service/helper terms as other screens.                                     |
+| Native path failure | Static English/Chinese text with the setting to recover; never echo arbitrary error data.                                    |
 
 ## Authentication diagnostics in 0.1.5
 
@@ -56,6 +56,6 @@ Use short localized statements to distinguish a saved offer, a successful save, 
 
 Runtime text lives in src/extension.ts and l10n/bundle.l10n.zh-cn.json. Manifest contributions use package.nls.json and package.nls.zh-cn.json. Native helper error text is in native/messages.go.
 
-Run npm run test:localization to check key and placeholder parity. Run npm run test:extension for each language's actual extension-entry flow using mocked VS Code API/UI/SecretStorage with real OpenSSH. The suite covers consent cancellation, unsupported SSH, storage errors, password retry, saving choices, trust, management, deletion cancellation, disable, diagnostics, and the native error path.
+Run npm run test:localization to check key and placeholder parity. Run npm run test:extension for each language's actual extension-entry flow using mocked VS Code API/UI/SecretStorage with real OpenSSH. The suite covers automatic installation, persistent disable, missing preview helpers, storage errors, password retry, saving choices, trust, management, deletion cancellation, disable, diagnostics, and the native error path.
 
 These checks verify content and behavior, not the actual visual rendering of every native VS Code control. Complete the real-host manual checks before calling the UI visually verified.

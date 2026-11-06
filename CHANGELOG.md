@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-06
+
+- Start password memory automatically after local installation/activation; remove the setup confirmation and manual Enable requirement. Explicit disable and later user SSH setting changes remain respected.
+- Remember a verified single interactive Password request after successful keyboard-interactive authentication. Bind stored records to their authentication method; retain legacy password records. Verification codes, ambiguous prompts, extra fields and later verification steps remain unsaved.
+- Deploy complete immutable native-helper generations during upgrades so running Windows binaries are not overwritten. Coordinate setup and disable with a local lock and password-free recovery journal.
+- Test installation, encrypted restart persistence, wrong/replaced passwords, Use Once, OTP/multi-step exclusion, migration, and native stream/security compatibility in both UI languages.
+
 ## 0.1.9 — 2026-11-06
 
 - Restore the original supplied artwork in the README header as a separate, unchanged image asset. Keep the resized Marketplace icon independent.

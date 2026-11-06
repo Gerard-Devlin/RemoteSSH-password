@@ -86,7 +86,15 @@ func (s *authSession) consumeLine(line []byte) {
 			s.packetPrefix = strings.TrimSuffix(l, m[5]) + "receive packet: type "
 			s.state.packet(m[5])
 		} else {
-			s.state.line(body)
+			if m[2] == "input_userauth_info_req" {
+				if strings.HasPrefix(body, "num_prompts ") {
+					if n, e := strconv.Atoi(strings.TrimPrefix(body, "num_prompts ")); e == nil {
+						s.state.keyboardPrompts(n)
+					}
+				}
+			} else {
+				s.state.line(body)
+			}
 		}
 	}
 	success := s.state.Success
@@ -184,11 +192,14 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 	s.mu.Lock()
 	st := s.state
 	kind := promptKind(m.Prompt, m.Kind, s.target, st)
-	failed := st.Rejected || kind == "password" && s.offers > 0
-	if kind == "password" {
+	failed := st.Rejected || (kind == "password" || kind == "interactive-password") && s.offers > 0
+	if kind == "password" || kind == "interactive-password" {
 		s.offers++
 	}
 	s.state.Rejected = false
+	if kind == "manual" && st.Method == "keyboard-interactive" {
+		s.state.PasswordOffered = false
+	}
 	s.mu.Unlock()
 	answer, e := s.rpc.request(Message{Type: "ask", Target: s.target, Fingerprint: st.Fingerprint, Verified: st.Verified, Kind: kind, Prompt: m.Prompt, Failed: failed}, 4*time.Minute)
 	if e != nil || answer.Reply == nil {
@@ -209,7 +220,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 		if kind == "trust" && answer.Reply.Value == "yes" {
 			s.state.TrustAccepted = true
 		}
-		if kind == "password" {
+		if kind == "password" || kind == "interactive-password" {
 			s.state.PasswordOffered = true
 		}
 		s.mu.Unlock()
@@ -373,7 +384,7 @@ func bindJob(j windows.Handle, pid uint32) error {
 // QUIET suppresses server-provided authentication banners; only selected local
 // log callsites are enabled. No files are used for the log stream.
 func quietArgs(args []string) []string {
-	out := []string{"-q", "-o", "LogLevel=QUIET", "-o", "LogVerbose=*:verify_host_key():1549*,*:check_host_key():1131*,*:check_host_key():1133*,*:check_host_key():1300*,*:ssh_userauth2():501*,*:authmethod_get():2375*,*:authmethod_get():2365*,*:userauth_passwd():*,*:ssh_packet_read_poll2():1664*,*:read_passphrase():*,*:warn_changed_key():*,*:ssh_connect_direct():*"}
+	out := []string{"-q", "-o", "LogLevel=QUIET", "-o", "LogVerbose=*:verify_host_key():1549*,*:check_host_key():1131*,*:check_host_key():1133*,*:check_host_key():1300*,*:ssh_userauth2():501*,*:authmethod_get():2375*,*:authmethod_get():2365*,*:userauth_passwd():*,*:input_userauth_info_req():2017*,*:input_userauth_failure():653*,*:ssh_packet_read_poll2():1664*,*:read_passphrase():*,*:warn_changed_key():*,*:ssh_connect_direct():*"}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" || !strings.HasPrefix(a, "-") || a == "-" {

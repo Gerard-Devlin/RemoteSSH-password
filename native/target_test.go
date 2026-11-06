@@ -112,3 +112,43 @@ func TestSuccessNeedsPacket(t *testing.T) {
 		t.Fatal("accepted uncorroborated log")
 	}
 }
+
+func TestInteractivePassword(t *testing.T) {
+	target := Target{Host: "server", User: "alice", Port: "22"}
+	s := AuthState{Verified: true, Method: "keyboard-interactive"}
+	s.keyboardPrompts(1)
+	if promptKind("(alice@server) Password: ", "", target, s) != "interactive-password" {
+		t.Fatal("fixed password not recognized")
+	}
+	for _, p := range []string{"(alice@server) Verification code: ", "(alice@server) OTP: ", "(other@server) Password: ", "(alice@server) Enter passphrase: "} {
+		if promptKind(p, "", target, s) != "manual" {
+			t.Fatal("non-password request eligible")
+		}
+	}
+	s.keyboardPrompts(1)
+	if promptKind("(alice@server) Password: ", "", target, s) != "manual" {
+		t.Fatal("second request eligible")
+	}
+	s = AuthState{Verified: true, Method: "keyboard-interactive"}
+	s.keyboardPrompts(2)
+	if promptKind("(alice@server) Password: ", "", target, s) != "manual" {
+		t.Fatal("multiple fields eligible")
+	}
+	s = AuthState{Verified: true, Method: "keyboard-interactive", PasswordOffered: true}
+	s.keyboardPrompts(1)
+	s.packet("receive packet: type 51")
+	if !s.Rejected {
+		t.Fatal("rejection not tracked")
+	}
+	s.keyboardPrompts(1)
+	if promptKind("(alice@server) Password: ", "", target, s) != "interactive-password" {
+		t.Fatal("single-field retry not eligible")
+	}
+	s.line("Authenticated using \"keyboard-interactive\" with partial success.")
+	if s.Rejected || !s.KbdPartial {
+		t.Fatal("partial success treated as rejection")
+	}
+	if promptKind("(alice@server) Password: ", "", target, s) != "manual" {
+		t.Fatal("partial conversation eligible")
+	}
+}

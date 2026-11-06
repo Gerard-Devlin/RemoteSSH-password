@@ -12,7 +12,7 @@ npm run check
 npm run build
 ```
 
-Run **Run Extension (English)** or **Run Extension (Simplified Chinese)** from the VS Code Run and Debug view. These launch configurations use separate development user-data directories. Install the matching Remote-SSH dependency into that isolated profile first, plus the Simplified Chinese Language Pack when testing Chinese VS Code. Enable password memory only inside the development window when testing. Keep production passwords out of fixtures and reports.
+Run **Run Extension (English)** or **Run Extension (Simplified Chinese)** from the VS Code Run and Debug view. These launch configurations use separate development user-data directories. Install the matching Remote-SSH dependency into that isolated profile first, plus the Simplified Chinese Language Pack when testing Chinese VS Code. Activation now configures password memory automatically, so always launch the extension only inside those isolated development profiles. Keep production passwords out of fixtures and reports.
 
 ## Repository layout
 

@@ -48,6 +48,8 @@ type AuthState struct {
 	Verified, TrustAccepted, Success, Rejected, Accepted bool
 	Method                                               string
 	PasswordOffered                                      bool
+	KbdRequests, KbdPrompts                              int
+	KbdUnsafe, KbdPartial                                bool
 }
 
 func (s *AuthState) line(l string) {
@@ -67,10 +69,20 @@ func (s *AuthState) line(l string) {
 		s.TrustAccepted = false
 	}
 	if strings.HasPrefix(l, "debug1: Next authentication method: ") {
-		s.Method = strings.TrimPrefix(l, "debug1: Next authentication method: ")
+		next := strings.TrimPrefix(l, "debug1: Next authentication method: ")
+		if next != s.Method {
+			s.KbdRequests = 0
+			s.KbdPrompts = 0
+		}
+		s.Method = next
 	}
 	if s.PasswordOffered && (strings.HasPrefix(l, "debug1: Authentications that can continue:") || l == "Permission denied, please try again.") {
 		s.Rejected = true
+		s.PasswordOffered = false
+	}
+	if l == "Authenticated using \"keyboard-interactive\" with partial success." {
+		s.KbdPartial = true
+		s.Rejected = false
 		s.PasswordOffered = false
 	}
 	if m := successRE.FindStringSubmatch(l); m != nil && s.Verified && s.Accepted {
@@ -82,7 +94,11 @@ func promptKind(prompt, hint string, t Target, s AuthState) string {
 	if hint == "confirm" || strings.Contains(prompt, "Are you sure you want to continue connecting") {
 		return "trust"
 	}
-	// Keyboard-interactive, passphrases and generic Password: are deliberately not cached.
+	// A single canonical interactive password is eligible; other challenges stay manual.
+	prefix := "(" + t.User + "@" + t.Host + ") "
+	if s.Method == "keyboard-interactive" && s.Verified && s.KbdPrompts == 1 && s.KbdRequests == 1 && !s.KbdUnsafe && !s.KbdPartial && strings.HasPrefix(prompt, prefix) && strings.EqualFold(strings.TrimSpace(strings.TrimPrefix(prompt, prefix)), "Password:") {
+		return "interactive-password"
+	}
 	if s.Method == "password" && s.Verified && prompt == t.User+"@"+t.Host+"'s password: " {
 		return "password"
 	}
@@ -99,5 +115,19 @@ func (s *AuthState) packet(body string) {
 	if body == "receive packet: type 51" && s.PasswordOffered {
 		s.Rejected = true
 		s.PasswordOffered = false
+		if s.Method == "keyboard-interactive" {
+			s.KbdRequests = 0
+			s.KbdPrompts = 0
+		}
+	}
+}
+
+func (s *AuthState) keyboardPrompts(n int) {
+	s.KbdPrompts = n
+	if n > 0 {
+		s.KbdRequests++
+		if n != 1 || s.KbdRequests > 1 {
+			s.KbdUnsafe = true
+		}
 	}
 }

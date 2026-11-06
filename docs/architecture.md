@@ -17,7 +17,7 @@ The four Windows executables are the same Go binary dispatched by filename. Prod
 
 ## Connection and persistence
 
-1. A local VS Code extension host activates on startup or SSH remote-authority resolution. Enable deploys a stable bridge and records original settings after explicit consent.
+1. A local VS Code extension host activates on startup or SSH remote-authority resolution. Activation automatically validates/deploys the helper and records original settings. No setup dialog or command is required.
 2. Remote-SSH invokes that bridge. Unsupported invocations/builds use ordinary OpenSSH fallback.
 3. For a supported session, the bridge resolves host, port, and username using real OpenSSH. The broker fixes the session target and validates the participating process.
 4. OpenSSH performs host-key checks. A recognized first-trust request shows localized server/key details, with the fingerprint matched to the active SSH session. Unrecognized requests retain the original OpenSSH text. Changed host keys are not silently accepted.
@@ -29,7 +29,7 @@ The four Windows executables are the same Go binary dispatched by filename. Prod
 
 Each window owns its route. An explicitly stale route fails instead of choosing another window. A current-user coordinator merges only compatible in-flight requests for the same target/fingerprint/rejection state; it is not a native password cache.
 
-The stable `globalStorageUri/bridge-v1` directory survives versioned extension replacement. `bridge.json` and `recovery.json` contain routing/configuration metadata, never passwords. SecretStorage holds credential values and revocation state. Settings restoration compares current values before writing, preserving later user changes.
+Complete immutable `globalStorageUri/bridge-v2/<version-hash>` generations survive versioned extension replacement. All four adjacent executables share a generation; upgrades select a new directory while existing processes can finish with the old files. `control-v2.json` and a process lock coordinate automatic setup, explicit off/suspended intent, and safe settings restoration. `bridge.json` and `recovery.json` contain routing/configuration metadata, never passwords. SecretStorage holds credential values and revocation state. Credential records also identify the authentication method; older records remain compatible with SSH password authentication. Settings restoration compares current values before writing, preserving later user changes.
 
 ## Localization
 

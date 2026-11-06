@@ -10,11 +10,11 @@ Version 0.1.5 uses publisher `Devlin`, creating a new extension identity. Restor
 
 A path ending in `globalStorage/local-tools.remote-ssh-password-memory/bridge-v1/ssh.exe` is a wrapper from the previous publisher. It is not the real OpenSSH binary. If the old extension was uninstalled first, this setting can remain while the wrapper and its recovery files have already been removed. Remote-SSH then shows its ordinary password box, and this extension cannot offer to remember anything.
 
-Install 0.1.8 or later, reload the local window, and run **Enable** again. Review the migration detail before confirming. The extension checks the real OpenSSH version/hash and SCP as usual. If no old recovery journal remains, disabling later keeps the verified real SSH program configured rather than restoring the deleted wrapper. Credentials are not read or transferred from the old publisher.
+Install the current release and reload the local window. Setup and known stale-path recovery now run automatically. The extension checks the real OpenSSH version/hash and SCP as usual. If no old recovery journal remains, disabling later keeps the verified real SSH program configured rather than restoring the deleted wrapper. Credentials are not read or transferred from the old publisher.
 
 ## Update from an earlier preview
 
-Install the new VSIX and reload the local VS Code window. If password memory was already enabled, run **Disable and Restore SSH Settings**, then **Enable** once to refresh the deployed local SSH helpers. Saved passwords are retained.
+Install the new VSIX and reload the local VS Code window. The extension automatically selects a complete new helper generation during upgrades. Saved passwords are retained. A deliberately disabled installation remains off.
 
 ## Start with diagnostics
 
@@ -24,9 +24,9 @@ The [compatibility guide](compatibility.md) lists the exact supported executable
 
 ## Passwords are still requested
 
-- Ensure **Enable** completed in the local VS Code window and Microsoft Remote-SSH is installed.
+- Install Microsoft Remote-SSH in the local window and allow this extension to activate. Setup is automatic unless you previously turned it off or changed the managed SSH settings.
 - Check `remote.SSH.path` and `remote.SSH.useLocalServer` against diagnostics.
-- Confirm this is a supported direct fixed-password connection. OTP, key passphrases, keyboard-interactive, and ambiguous prompts are never remembered.
+- Confirm this is a supported direct fixed-password connection. Direct SSH passwords and a verified single interactive Password request are supported. OTP, key passphrases, multiple fields and extra interactive steps remain manual.
 - **Use once** does not save a password. **Remember on this device** saves only after successful password authentication.
 - A changed target, username, port, fingerprint, or host-key algorithm can require fresh input.
 - A different VS Code profile/user-data directory has separate storage. A window reload or unavailable broker can cause ordinary authentication fallback.
@@ -50,7 +50,7 @@ A success message in diagnostics confirms when a newly entered password was actu
 
 ## A password prompt says the response will not be saved
 
-This is the manual-authentication path. The original server request appears as the masked input’s placeholder, with a short localized explanation below it. A challenge named Password can still be keyboard-interactive; this preview remembers only verified authentication using SSH’s password method. It does not infer a cacheable password from the challenge text.
+This is the manual-authentication path. The original server request appears as the masked input’s placeholder, with a short localized explanation below it. Current releases can remember a verified single Password challenge over keyboard-interactive. This manual input instead indicates an OTP, passphrase, an additional field/step, or a request that could not be recognized as a fixed server password. It deliberately has no Remember menu. If a fixed Password request still follows this path, report sanitized diagnostics and the prompt shape, never the response.
 
 ## Cancel or forget
 
@@ -73,8 +73,8 @@ VS Code has no dependable uninstall callback. The stable bridge is deliberately 
 Deleting global storage, quarantining the bridge, or moving the real SSH executable can break fallback. Restore the path before deleting remaining bridge files:
 
 1. Open **Preferences: Open User Settings (JSON)**.
-2. Locate the extension's `bridge-v1/recovery.json`, using the diagnostic path or the current `remote.SSH.path`. The record contains original settings, not passwords.
-3. If `remote.SSH.path` still points into `bridge-v1`, restore `original.path`. If it was originally unset, remove that setting.
+2. Locate the extension's `bridge-v2/<version-hash>/recovery.json`, using the diagnostic path or the current `remote.SSH.path`. The record contains original settings, not passwords.
+3. If `remote.SSH.path` still points into the helper directory, restore `original.path`. If it was originally unset, remove that setting.
 4. If `remote.SSH.useLocalServer` still equals the installed value `true`, restore its recorded original value, or remove it if originally unset. Preserve any later edits.
 5. If the recovery record is unavailable, choose a real SSH executable whose existence you have checked, such as `C:/Windows/System32/OpenSSH/ssh.exe`.
 6. Run **Developer: Reload Window** and reconnect using ordinary Remote-SSH.
@@ -82,7 +82,7 @@ Deleting global storage, quarantining the bridge, or moving the real SSH executa
 A typical standard-install storage location is:
 
 ```text
-%APPDATA%\Code\User\globalStorage\devlin.remote-ssh-password-memory\bridge-v1
+%APPDATA%\Code\User\globalStorage\devlin.remote-ssh-password-memory\bridge-v2\<version-hash>
 ```
 
 Older local-tools previews keep their own recovery records under local-tools.remote-ssh-password-memory. Use the record associated with the currently configured SSH path.

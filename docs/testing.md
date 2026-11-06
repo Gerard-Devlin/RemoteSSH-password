@@ -40,11 +40,11 @@ npm run build
 npm run test:host -- -Code "C:/path/to/Microsoft VS Code/Code.exe"
 ```
 
-The script creates separate user-data/extensions directories, copies the installed dependency versions needed by the fixture, and launches seed/verify phases. Use `-ExtensionSource` if installed dependencies are elsewhere. The currently expected dependency folders are Remote-SSH 0.128.0, Remote-SSH Edit 0.87.0, and Remote Explorer 0.5.0.
+The script creates separate user-data/extensions directories, copies the installed dependency versions needed by the fixture, and launches seed/verify/disabled phases. Use `-ExtensionSource` if installed dependencies are elsewhere. The currently expected dependency folders are Remote-SSH 0.128.0, Remote-SSH Edit 0.87.0, and Remote Explorer 0.5.0.
 
-The fixture wraps the production entry in a disposable test copy and accesses that copy’s actual extension-context SecretStorage. Seed and verify use the same publisher/name but different manifest versions and installation paths. It launches normal isolated VS Code processes: the standard `--extensionTestsPath` mode intentionally uses in-memory application storage and cannot prove cross-process persistence. The wrapper is excluded from the shipped VSIX.
+The fixture wraps the production entry in a disposable test copy and accesses that copy’s actual extension-context SecretStorage. Seed and verify use the same publisher/name but different manifest versions, installation paths, and native helper-generation paths. A third process verifies that an explicit disable remains off. It launches normal isolated VS Code processes: the standard `--extensionTestsPath` mode intentionally uses in-memory application storage and cannot prove cross-process persistence. The wrapper is excluded from the shipped VSIX.
 
-This checks activation, commands, real encrypted persistence, and deletion. It does not automate the interactive password/fingerprint workflow or a complete Remote-SSH connection. If VS Code is updating, wait for it to finish rather than forcing a lock release. See the latest report for the executed host version and results.
+This checks automatic setup, commands, real encrypted interactive-password persistence, generation upgrades, deletion, and persistent disable. It does not automate the interactive password/fingerprint workflow or a complete Remote-SSH connection. If VS Code is updating, wait for it to finish rather than forcing a lock release. See the latest report for the executed host version and results.
 
 ## CI
 

@@ -10,7 +10,7 @@
 | VS Code              | Minimum 1.144.0. Local installation inspected at 1.144.0; real-host acceptance is pending. |
 | Microsoft Remote-SSH | Integration inspected at 0.128.0; other versions are unverified.                           |
 | OpenSSH              | OpenSSH_for_Windows_9.5p2, LibreSSL 3.8.2, with the exact binary hash below.               |
-| Authentication       | Direct connection using SSH's password method and a recognized standard user@host prompt.  |
+| Authentication       | Direct SSH password, or a verified single Password request using keyboard-interactive.     |
 | Language             | English fallback and Simplified Chinese (`zh-cn`).                                         |
 
 Supported real `ssh.exe` SHA256:
@@ -41,7 +41,7 @@ Patch-specific source locations can change independently of the displayed versio
 | ProxyJump or ProxyCommand                                              | Passthrough; multi-hop password memory is not supported.                    |
 | Non-strict host-key checking, including `no` and `accept-new`          | Passthrough.                                                                |
 | Explicit `-E` log-file options                                         | Passthrough.                                                                |
-| Key passphrases, keyboard-interactive, OTP, ambiguous prompts          | Manual input only in a managed connection; never remembered.                |
+| Key passphrases, OTP, ambiguous or additional interactive prompts      | Manual input only in a managed connection; never remembered.                |
 | Changed verified fingerprint                                           | No automatic saved-password offer. OpenSSH's host-key policy still applies. |
 | macOS, Linux, Windows ARM64                                            | No native package in this preview.                                          |
 | Host certificates, custom authentication modules, unusual target names | Outside the validation claim; persistence may be unavailable.               |

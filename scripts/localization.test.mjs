@@ -103,7 +103,7 @@ test('raw manual challenges and unrecognized SSH requests are not translated', (
   const manual = calls.find(
     (c) =>
       c.arguments[0].text ===
-      'This response is used for this connection only and will not be saved.',
+      'This verification request cannot be remembered. Enter a response for this connection.',
   );
   assert.equal(
     manual.arguments.length,

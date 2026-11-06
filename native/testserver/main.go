@@ -18,6 +18,14 @@ import (
 )
 
 type Config struct {
+	Prompt       string   `json:"prompt"`
+	Prompts      []string `json:"prompts"`
+	SecondPrompt string   `json:"secondPrompt"`
+	Code         string   `json:"code"`
+	Name         string   `json:"name"`
+	Instruction  string   `json:"instruction"`
+	Partial      bool     `json:"partial"`
+
 	KeyboardInteractive bool   `json:"keyboardInteractive"`
 	DelayPasswordMS     int    `json:"delayPasswordMS"`
 	Password            string `json:"password"`
@@ -56,17 +64,48 @@ func main() {
 	if cfg.KeyboardInteractive {
 		config.PasswordCallback = nil
 		config.KeyboardInteractiveCallback = func(c ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
-			answers, err := challenge("", "", []string{"Password: "}, []bool{false})
+			prompts := cfg.Prompts
+			if len(prompts) == 0 {
+				prompt := cfg.Prompt
+				if prompt == "" {
+					prompt = "Password: "
+				}
+				prompts = []string{prompt}
+			}
+			answers, err := challenge(cfg.Name, cfg.Instruction, prompts, make([]bool, len(prompts)))
 			if err != nil {
 				return nil, err
 			}
 			mu.Lock()
 			pass := cfg.Password
 			mu.Unlock()
-			ok := len(answers) == 1 && answers[0] == pass
+			ok := len(answers) == len(prompts) && len(answers) > 0 && answers[0] == pass
+			for i := 1; i < len(answers); i++ {
+				ok = ok && answers[i] == cfg.Code
+			}
 			emit(map[string]any{"type": "attempt", "user": c.User(), "accepted": ok, "method": "keyboard-interactive"})
 			if !ok {
 				return nil, fmt.Errorf("rejected")
+			}
+			followup := func(_ ssh.ConnMetadata, next ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+				prompt := cfg.SecondPrompt
+				if prompt == "" {
+					prompt = "Verification code: "
+				}
+				replies, err := next("", "", []string{prompt}, []bool{false})
+				if err != nil {
+					return nil, err
+				}
+				if len(replies) != 1 || replies[0] != cfg.Code {
+					return nil, fmt.Errorf("rejected")
+				}
+				return nil, nil
+			}
+			if cfg.Partial {
+				return nil, &ssh.PartialSuccessError{Next: ssh.ServerAuthCallbacks{KeyboardInteractiveCallback: followup}}
+			}
+			if cfg.SecondPrompt != "" {
+				return followup(c, challenge)
 			}
 			return nil, nil
 		}

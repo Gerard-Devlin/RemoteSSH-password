@@ -155,7 +155,7 @@ func serveWindow(c net.Conn, dir string, u *uiBridge) {
 		m.Session = session
 		m.Target = target
 		var r Message
-		if m.Type == "ask" && m.Kind == "password" {
+		if m.Type == "ask" && (m.Kind == "password" || m.Kind == "interactive-password") {
 			r, e = coordinate(dir, m, u)
 		} else {
 			r, e = u.request(m)
@@ -290,7 +290,7 @@ func coordinate(dir string, m Message, u *uiBridge) (Message, error) {
 	defer c.Close()
 	ch := channel(c)
 	ch.SetReadDeadline(time.Now().Add(4 * time.Minute))
-	data, _ := json.Marshal([]any{m.Target, m.Fingerprint, m.Failed})
+	data, _ := json.Marshal([]any{m.Target, m.Fingerprint, m.Failed, m.Kind})
 	key := fmt.Sprintf("%x", sha256.Sum256(data))
 	if ch.send(Message{Type: "coordinate", Prompt: key}) != nil {
 		return Message{}, net.ErrClosed

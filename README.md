@@ -17,9 +17,11 @@
 
 A Windows x64 companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.1.9.** Local OpenSSH loopback and isolated VS Code SecretStorage restart tests pass. Complete interactive Remote-SSH installation and visual UI acceptance remain open. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
+> **Preview 0.2.0.** Local OpenSSH loopback and isolated VS Code SecretStorage restart tests pass. Complete interactive Remote-SSH installation and visual UI acceptance remain open. This preview supports one exact OpenSSH build. Read the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-06.md) before installing.
 
 ## Features
+
+- **Ready after installation.** Password memory starts automatically in the local window. No Enable command or setup dialog is required.
 
 - **Save after success.** A password is written to VS Code SecretStorage only after confirmed password authentication.
 - **Remember or use once.** Each new password has an explicit persistence choice.
@@ -44,13 +46,13 @@ See [supported builds and fallback behavior](https://github.com/Gerard-Devlin/Re
 
 Restore the old extension’s SSH settings, uninstall it, and reload VS Code before installing the Devlin package. Saved passwords do not automatically move between extension identities. Follow the [migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#migrate-from-the-local-tools-preview).
 
-If the old preview has already been removed and Enable reports its helper path as unsupported, version 0.1.8+ can recover that exact stale path during setup. Review the recovery detail and confirm Enable; old passwords are not transferred.
+If the old preview has already been removed and Enable reports its helper path as unsupported, version 0.1.8+ can recover that exact stale path during setup. Current releases recover that path automatically during local activation; old passwords are not transferred.
 
 ### Install and connect
 
 1. Install [Remote SSH Password Memory](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) from the VS Code Marketplace. In the Extensions view, search for `Devlin.remote-ssh-password-memory` and check the publisher is **Devlin**.
-2. Ensure Microsoft Remote-SSH is installed. For manual installation, download `remote-ssh-password-memory-0.1.9-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
-3. Run **SSH Password Memory: Enable** from the Command Palette and confirm the two setting changes.
+2. Ensure Microsoft Remote-SSH is installed. For manual installation, download `remote-ssh-password-memory-0.2.0-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
+3. Password memory starts automatically in the local window. No setup command is needed.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
 6. After successful authentication, use **Manage Saved Passwords** to inspect the destination and fingerprint. Passwords are never displayed.
@@ -58,10 +60,10 @@ If the old preview has already been removed and Enable reports its helper path a
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.1.9-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-0.2.0-win32-x64.vsix
 ```
 
-Installing the extension does not enable password memory. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.
+Password memory starts automatically after installation and local activation. If you explicitly turn it off, it stays off until you choose to enable it again. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.
 
 ## Commands
 
@@ -69,7 +71,7 @@ Open the Command Palette with **Ctrl+Shift+P**. Commands appear under **SSH Pass
 
 | Command                          | Purpose                                                                            |
 | -------------------------------- | ---------------------------------------------------------------------------------- |
-| Enable                           | Review and enable password memory.                                                 |
+| Enable                           | Resume password memory after turning it off.                                       |
 | Manage Saved Passwords           | List saved destinations and fingerprints; select one to delete its saved password. |
 | Delete Saved Password            | Remove a selected saved credential.                                                |
 | Disable and Restore SSH Settings | Stop password memory and restore settings still owned by the extension.            |
@@ -87,10 +89,10 @@ Authentication challenges and fingerprint values are kept verbatim. Standard ser
 
 Enabling writes exactly two user settings:
 
-| Setting                     | Value while enabled                                                     |
-| --------------------------- | ----------------------------------------------------------------------- |
-| `remote.SSH.path`           | The stable `bridge-v1/ssh.exe` path in this extension's global storage. |
-| `remote.SSH.useLocalServer` | `true`                                                                  |
+| Setting                     | Value while enabled                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `remote.SSH.path`           | A persistent `bridge-v2/<version-hash>/ssh.exe` path in this extension's global storage. |
+| `remote.SSH.useLocalServer` | `true`                                                                                   |
 
 Original values are recorded in local state and a password-free `recovery.json`. Other settings and your SSH config remain intact.
 
@@ -100,7 +102,7 @@ Before uninstalling, forget credentials you want removed, then run **Disable and
 
 Passwords use `ExtensionContext.secrets` rather than a custom password file. Managed authentication transports answers through memory and restricted local pipes, not command-line arguments, environment variables, or temporary text files. Server fingerprint checks stay enabled; new or changed fingerprints are never silently trusted.
 
-Only clearly recognized, fixed-password authentication can be remembered. Other challenges require manual input. This cannot protect secrets from malware already controlling your Windows account. Read the [security model](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/SECURITY.md) for identity checks, local transport, memory limitations, and reporting guidance.
+Direct SSH passwords and a verified, single interactive Password request can be remembered. The Remember choice is for a fixed server password. Verification codes, key passphrases, unrecognized requests, and additional interactive steps remain manual. This cannot protect secrets from malware already controlling your Windows account. Read the [security model](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/SECURITY.md) for identity checks, local transport, memory limitations, and reporting guidance.
 
 ## Documentation
 

@@ -40,7 +40,7 @@ try{
  Remove-Item Env:\ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
  $env:SSHPM_TEST_PROJECT=$project
  $env:SSHPM_TEST_RUNNER=Join-Path $project 'scripts\host-tests.cjs'
- foreach($phase in @('seed','verify')){
+ foreach($phase in @('seed','verify','disabled')){
   $env:SSHPM_TEST_PHASE=$phase
   # Different installation paths and manifest versions, same extension identity.
   # The wrapper exists only in this isolated test copy, never in the VSIX.

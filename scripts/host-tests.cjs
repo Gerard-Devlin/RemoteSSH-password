@@ -35,13 +35,20 @@ exports.run = async (testContext) => {
         assert.ok(commands.includes('sshPasswordMemory.' + n));
     });
     await check(
-      'activation does not silently change SSH settings',
+      'automatic setup is ready, or explicit disable remains off',
       async () => {
         const cfg = vscode.workspace.getConfiguration('remote.SSH');
-        assert.equal(cfg.inspect('path').globalValue, undefined);
-        assert.equal(cfg.inspect('useLocalServer').globalValue, undefined);
+        if (process.env.SSHPM_TEST_PHASE === 'disabled') {
+          assert.equal(cfg.inspect('path').globalValue, undefined);
+          assert.equal(cfg.inspect('useLocalServer').globalValue, undefined);
+        } else {
+          assert.ok(cfg.inspect('path').globalValue.includes('bridge-v2'));
+          assert.equal(cfg.inspect('useLocalServer').globalValue, true);
+          assert.ok(process.env.SSHPM_WINDOW_PIPE);
+        }
       },
     );
+    if (process.env.SSHPM_TEST_PHASE === 'disabled') return;
     const { secrets, state, storage } =
       testContext ?? (await extension.activate());
     await check(
@@ -49,10 +56,21 @@ exports.run = async (testContext) => {
       async () => {
         if (process.env.SSHPM_TEST_PHASE === 'seed') {
           await state.update('testStorage', storage);
+          await state.update(
+            'testBridge',
+            vscode.workspace.getConfiguration('remote.SSH').inspect('path')
+              .globalValue,
+          );
           await state.update('testVersion', extension.packageJSON.version);
           await state.update('testPath', extension.extensionPath);
         } else {
           assert.equal(storage, state.get('testStorage'));
+          assert.notEqual(
+            vscode.workspace.getConfiguration('remote.SSH').inspect('path')
+              .globalValue,
+            state.get('testBridge'),
+          );
+          await fs.access(state.get('testBridge'));
           assert.notEqual(
             extension.packageJSON.version,
             state.get('testVersion'),
@@ -83,7 +101,7 @@ exports.run = async (testContext) => {
           await core.handle({
             type: 'ask',
             session: 's',
-            kind: 'password',
+            kind: 'interactive-password',
             verified: true,
             fingerprint,
           });
@@ -96,7 +114,7 @@ exports.run = async (testContext) => {
           await core.handle({
             type: 'success',
             session: 's',
-            method: 'password',
+            method: 'keyboard-interactive',
           });
           assert.equal(
             JSON.parse(await secrets.get(keyFor(target))).password,
@@ -116,7 +134,7 @@ exports.run = async (testContext) => {
           const answer = await core.handle({
             type: 'ask',
             session: 's',
-            kind: 'password',
+            kind: 'interactive-password',
             verified: true,
             fingerprint,
           });
@@ -132,6 +150,17 @@ exports.run = async (testContext) => {
         assert.equal(await secrets.get(keyFor(target)), undefined);
         await state.update('testDigest', undefined);
       });
+      await check(
+        'explicit disable restores the original isolated settings',
+        async () => {
+          await vscode.commands.executeCommand('sshPasswordMemory.disable');
+          assert.equal(
+            vscode.workspace.getConfiguration('remote.SSH').inspect('path')
+              .globalValue,
+            undefined,
+          );
+        },
+      );
     }
   } catch (error) {
     results.push({
