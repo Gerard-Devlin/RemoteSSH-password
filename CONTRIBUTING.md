@@ -66,13 +66,13 @@ CI runs on Windows and builds/verifies the package. Loopback integration runs on
 ## Preparing a public repository or release
 
 - Keep the `repository`, `homepage`, and `bugs` metadata aligned with the actual GitHub repository when moving or forking the project.
-- `local-tools` is the existing local publisher ID. Choose and register the intended publisher before Marketplace publication. Changing publisher/name changes extension identity and storage paths, so document migration or restore settings first.
+- `Devlin` is the registered publisher ID used by the manifest. The earlier `local-tools` preview has a different identity and storage namespace; follow the [migration guide](docs/marketplace.md) before switching.
 - Keep `package.json`, `package-lock.json`, README package examples, and the changelog version aligned.
 - Complete the [manual acceptance checklist](docs/testing.md#manual-acceptance) and publish a dated test report with accurate limitations.
 - Build the VSIX, verify its inventory and SHA256, and review licenses/security-reporting settings.
 - Do not add Marketplace, CI, download, or rating badges until the corresponding public resource exists.
 
-Local packaging preserves relative documentation and image links with `--no-rewrite-relative-links`, so it does not need an invented repository URL. Before a Marketplace release, configure real content/image base URLs and review how the rendered listing resolves those links.
+README links and images use the public repository’s absolute HTTPS URLs. Normal vsce link processing is enabled, so the verified Windows x64 package can also be uploaded manually to Marketplace. Keep the [publisher and upload guide](docs/marketplace.md) aligned with any future identity changes.
 
 No publishing or remote Git push is performed by build/package commands.
 

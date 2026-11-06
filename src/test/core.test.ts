@@ -11,8 +11,7 @@ import {
 import { restoration } from '../settings';
 const target: Target = { host: 'example.test', port: '22', user: 'alice' };
 const fp = 'SHA256:' + 'A'.repeat(43);
-function harness() {
-  const secrets = new Map<string, string>();
+function harness(secrets = new Map<string, string>()) {
   let prompts = 0;
   let changed = 0;
   let answer: Reply = { value: 'synthetic-中文-$ & " \\', remember: true };
@@ -306,4 +305,40 @@ test('rejected old ticket does not delete a newer successful value', async () =>
   h.secrets.set(keyFor(target), JSON.stringify(updated));
   await h.core.handle({ type: 'rejected', session: 'b' });
   assert.equal((await h.core.read(target))?.password, 'new-password');
+});
+
+test('saved credentials survive runtime disposal and a new core instance', async () => {
+  const before = harness();
+  await before.open();
+  const entered = await before.ask();
+  await before.core.handle({
+    type: 'success',
+    session: 's',
+    method: 'password',
+  });
+  before.core.clear();
+  const after = harness(before.secrets);
+  await after.open();
+  const reused = await after.ask();
+  assert.equal(reused.source, 'saved');
+  assert.equal(reused.value, entered.value);
+  assert.equal(after.prompts, 0);
+});
+
+test('manual authentication leaves an existing saved password available', async () => {
+  const h = harness();
+  await h.open();
+  await h.ask();
+  await h.core.handle({ type: 'success', session: 's', method: 'password' });
+  const saved = h.secrets.get(keyFor(target));
+  await h.open('interactive');
+  await h.ask('interactive', { kind: 'manual' });
+  await h.core.handle({
+    type: 'success',
+    session: 'interactive',
+    method: 'keyboard-interactive',
+  });
+  assert.equal(h.secrets.get(keyFor(target)), saved);
+  await h.open('later');
+  assert.equal((await h.ask('later')).source, 'saved');
 });

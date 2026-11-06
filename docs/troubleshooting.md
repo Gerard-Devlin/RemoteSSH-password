@@ -2,6 +2,10 @@
 
 [Back to README](../README.md)
 
+## Moving from the local-tools publisher
+
+Version 0.1.5 uses publisher `Devlin`, creating a new extension identity. Restore settings and uninstall the old extension before installing the new one; follow the [migration guide](marketplace.md#migrate-from-the-local-tools-preview). Passwords are not automatically migrated.
+
 ## Update from an earlier preview
 
 Install the new VSIX and reload the local VS Code window. If password memory was already enabled, run **Disable and Restore SSH Settings**, then **Enable** once to refresh the deployed local SSH helpers. Saved passwords are retained.
@@ -22,6 +26,21 @@ The [compatibility guide](compatibility.md) lists the exact supported executable
 - A different VS Code profile/user-data directory has separate storage. A window reload or unavailable broker can cause ordinary authentication fallback.
 
 If an old password is rejected, it is not repeatedly offered automatically in the same connection. Enter the replacement when prompted; it is saved only after success. Network loss or a timeout alone does not mark a saved password as wrong.
+
+## A saved connection is listed, but a new input is requested
+
+Updates with the same publisher and extension name keep the same SecretStorage namespace. The credential key does not contain the extension version or installation path. Reloading, disabling, and re-enabling do not delete saved passwords.
+
+If a standard Remote-SSH password input appears only after updating or reloading, fully exit all VS Code windows and reopen before retrying. A detached Remote-SSH local server can retain an address for a previous authentication service. Re-enabling alone cannot replace the environment of an already running detached process. This is a troubleshooting step, not proof of the cause; keep the saved record while checking.
+
+The list confirms that a credential is stored; it does not mean that every authentication request can use it. Open **Show Diagnostics** after reproducing the prompt:
+
+- **A saved password was supplied for this connection.** The saved password was offered. If the server rejects it, enter a replacement.
+- **No saved password matches this connection.** Check the effective host, port, and case-sensitive username, as well as the VS Code user-data directory.
+- **This authentication request cannot use a saved password.** The current request is interactive, a key passphrase, or otherwise not eligible for password memory, even if its text says Password.
+- A fingerprint warning means the server key differs from the saved record. Verify the server before entering anything; the extension does not bypass that check.
+
+A success message in diagnostics confirms when a newly entered password was actually saved. A publisher change is a different extension identity; see the [migration guide](marketplace.md).
 
 ## A password prompt says the response will not be saved
 
@@ -57,8 +76,10 @@ Deleting global storage, quarantining the bridge, or moving the real SSH executa
 A typical standard-install storage location is:
 
 ```text
-%APPDATA%\Code\User\globalStorage\local-tools.remote-ssh-password-memory\bridge-v1
+%APPDATA%\Code\User\globalStorage\devlin.remote-ssh-password-memory\bridge-v1
 ```
+
+Older local-tools previews keep their own recovery records under local-tools.remote-ssh-password-memory. Use the record associated with the currently configured SSH path.
 
 Profiles, portable mode, and custom `--user-data-dir` values can change this location. In settings JSON, use forward slashes or escaped backslashes for Windows paths.
 

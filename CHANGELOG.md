@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+## 0.1.5 — 2026-11-06
+
+- Add bilingual authentication diagnostics that distinguish a saved password being offered, a missing match, manual authentication, rejection, and a successful save.
+- Test persisted credentials across runtime disposal and version/installation-path changes in an isolated VS Code profile.
+
+- Set the registered publisher to Devlin, producing extension identity Devlin.remote-ssh-password-memory.
+- Prepare the standard Windows x64 VSIX for manual Marketplace upload with absolute HTTPS README links/images and normal vsce link processing.
+- Verify the packaged publisher, version, extension identity, platform, and exact production inventory. Update the isolated host fixture to discover the manifest identity.
+- Add trusted-main CI distribution: immutable GitHub Releases, verified canonical VSIX artifacts, and opt-in Marketplace OIDC publishing. Add version update commands for future main-branch releases.
+- Document migration from local-tools: restore settings, uninstall/reload the old extension, install the new one, and enter passwords again.
+
 ## 0.1.4 — 2026-11-06
 
 - Review and unify every extension-owned English/Chinese dialog, input hint, button, password menu, error, and diagnostic message.

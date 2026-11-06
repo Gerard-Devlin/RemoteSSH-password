@@ -30,7 +30,10 @@ export interface Secrets {
   store(key: string, value: string): Thenable<void> | Promise<void>;
   delete(key: string): Thenable<void> | Promise<void>;
 }
+export type CredentialStatus =
+  'manual' | 'missing' | 'reused' | 'saved' | 'rejected';
 export interface UI {
+  status?(event: CredentialStatus): void;
   ask(
     target: Target,
     prompt: string,
@@ -160,6 +163,7 @@ export class CredentialCore {
       await this.index(keyFor(s.target));
     }
     s.candidate = undefined;
+    this.ui.status?.('rejected');
   }
   async handle(m: Message): Promise<Reply> {
     const id = m.session;
@@ -220,6 +224,7 @@ export class CredentialCore {
         await this.secrets.store(keyFor(s.target), JSON.stringify(record));
         const { password, ...metadata } = record;
         await this.index(keyFor(s.target), metadata);
+        this.ui.status?.('saved');
       }
       return {};
     }
@@ -239,6 +244,7 @@ export class CredentialCore {
       m.verified === true &&
       validFingerprint(m.fingerprint);
     if (!cacheable) {
+      this.ui.status?.('manual');
       s.candidate = undefined;
       return this.ui.ask(
         s.target,
@@ -280,8 +286,10 @@ export class CredentialCore {
         revision,
       };
       s.candidate = r;
+      this.ui.status?.('reused');
       return r;
     }
+    if (!saved) this.ui.status?.('missing');
     return this.prompt(s, m, cacheable);
   }
   private release(s: Session) {

@@ -5,15 +5,18 @@ const crypto = require('node:crypto');
 const vscode = require('vscode');
 const { CredentialCore, keyFor } = require('../dist/core.js');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-exports.run = async () => {
+exports.run = async (testContext) => {
   const results = [];
   const check = async (name, fn) => {
     await fn();
     results.push({ name, passed: true });
   };
   try {
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(__dirname, '..', 'package.json'), 'utf8'),
+    );
     const extension = vscode.extensions.getExtension(
-      'local-tools.remote-ssh-password-memory',
+      manifest.publisher + '.' + manifest.name,
     );
     assert.ok(extension, 'extension discovered');
     await check(
@@ -39,10 +42,25 @@ exports.run = async () => {
         assert.equal(cfg.inspect('useLocalServer').globalValue, undefined);
       },
     );
-    const helper = vscode.extensions.getExtension(
-      'local-tests.sshpm-host-fixture',
+    const { secrets, state, storage } =
+      testContext ?? (await extension.activate());
+    await check(
+      'same extension storage survives version and installation path changes',
+      async () => {
+        if (process.env.SSHPM_TEST_PHASE === 'seed') {
+          await state.update('testStorage', storage);
+          await state.update('testVersion', extension.packageJSON.version);
+          await state.update('testPath', extension.extensionPath);
+        } else {
+          assert.equal(storage, state.get('testStorage'));
+          assert.notEqual(
+            extension.packageJSON.version,
+            state.get('testVersion'),
+          );
+          assert.notEqual(extension.extensionPath, state.get('testPath'));
+        }
+      },
     );
-    const { secrets, state } = await helper.activate();
     const target = { host: 'fixture.invalid', port: '2222', user: 'fixture' };
     const fingerprint = 'SHA256:' + 'X'.repeat(43);
     let value = 'host-fixture-' + crypto.randomUUID() + '-中文!"&';

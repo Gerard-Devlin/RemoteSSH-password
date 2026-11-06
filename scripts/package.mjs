@@ -16,12 +16,12 @@ const args = [
   '--target',
   'win32-x64',
   '--no-dependencies',
-  '--no-rewrite-relative-links',
   '--out',
   output,
 ];
-// A real repository URL must be added by its owner, never guessed by the build.
-if (!manifest.repository) args.push('--allow-missing-repository');
+// Keep normal vsce link processing enabled for Marketplace packages.
+if (!manifest.repository)
+  throw new Error('A repository URL is required for the upload package.');
 const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

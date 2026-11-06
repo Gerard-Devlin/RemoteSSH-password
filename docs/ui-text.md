@@ -48,6 +48,10 @@
 | Diagnostics         | One labeled state or value per line. Use the same service/helper terms as other screens.                                       |
 | Native path failure | Static English/Chinese text with the setting to recover; never echo arbitrary error data.                                      |
 
+## Authentication diagnostics in 0.1.5
+
+Use short localized statements to distinguish a saved offer, a successful save, a missing match, a manual challenge, and rejection. These events contain no password, credential key, or target identifier. They explain why a stored entry may still require manual authentication without implying that an update deleted it.
+
 ## Maintenance
 
 Runtime text lives in src/extension.ts and l10n/bundle.l10n.zh-cn.json. Manifest contributions use package.nls.json and package.nls.zh-cn.json. Native helper error text is in native/messages.go.

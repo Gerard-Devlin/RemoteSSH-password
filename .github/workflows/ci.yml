@@ -53,13 +53,24 @@ jobs:
         run: Write-Output 'NOT RUN - loopback and extension-entry integration require the pinned system OpenSSH build. See the job summary.'
       - name: Build Windows x64 package
         run: npm run package
-      - name: Verify package inventory, hashes, and native architecture
-        run: npm run verify:package
+      - name: Verify package and write distribution receipt
+        run: |
+          $record = ./scripts/verify-package.ps1 | ConvertFrom-Json
+          $commit = (& git rev-parse HEAD).Trim()
+          if ($commit -ine $env:GITHUB_SHA) { throw 'Checkout commit mismatch' }
+          $record | Add-Member -NotePropertyName sourceCommit -NotePropertyValue $commit
+          $utf8 = [Text.UTF8Encoding]::new($false)
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'artifacts/package-verification.json'), ($record | ConvertTo-Json -Depth 8), $utf8)
+          $name = [IO.Path]::GetFileName($record.package)
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'artifacts/SHA256SUMS.txt'), $record.sha256 + '  ' + $name + [char]10, $utf8)
+          Write-Output ('Verified ' + $record.extensionId + ' ' + $record.version + ' ' + $record.sha256)
       - uses: actions/upload-artifact@v7
         with:
           name: remote-ssh-password-memory-win32-x64
           path: |
             artifacts/*.vsix
+            artifacts/package-verification.json
+            artifacts/SHA256SUMS.txt
             artifacts/integration-results.json
             artifacts/extension-results-en.json
             artifacts/extension-results-zh-cn.json

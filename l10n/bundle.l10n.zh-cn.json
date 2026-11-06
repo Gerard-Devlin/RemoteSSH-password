@@ -79,5 +79,10 @@
   "Local SSH helper folder: {0}": "本地 SSH 辅助程序目录：{0}",
   "Only SSH password authentication can be remembered. Verification codes, interactive challenges, and key passphrases must be entered each time.": "仅支持记住 SSH 密码认证。验证码、交互式验证和密钥口令需要每次输入。",
   "Could not complete this action": "操作未完成",
-  "Run Show Diagnostics from the Command Palette, then try again.": "请在命令面板运行“查看诊断”，检查后再重试。"
+  "Run Show Diagnostics from the Command Palette, then try again.": "请在命令面板运行“查看诊断”，检查后再重试。",
+  "This authentication request cannot use a saved password. Enter the response manually for this connection.": "此认证请求无法使用已保存的密码，请手动输入本次连接所需的内容。",
+  "No saved password matches this connection.": "没有找到与本次连接匹配的已保存密码。",
+  "A saved password was supplied for this connection.": "已为本次连接提供保存的密码。",
+  "Password saved on this device after a successful sign-in.": "登录成功，密码已保存到本机。",
+  "The server rejected the password. A rejected saved copy will not be used again.": "服务器拒绝了该密码；被拒绝的已保存密码不会再次使用。"
 }

@@ -53,7 +53,24 @@ test('documentation links and image references resolve with repository-exact cas
       ),
     ];
     for (const link of links) {
-      if (/^[a-z][a-z\d+.-]*:/i.test(link) || link.startsWith('#')) continue;
+      if (link.startsWith('#')) continue;
+      const repositoryRoots = [
+        'https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/',
+        'https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/',
+      ];
+      const repositoryRoot = repositoryRoots.find((prefix) =>
+        link.startsWith(prefix),
+      );
+      if (repositoryRoot) {
+        await exactFile(
+          decodeURIComponent(
+            link.slice(repositoryRoot.length).split(/[?#]/)[0],
+          ),
+        );
+        checked++;
+        continue;
+      }
+      if (/^[a-z][a-z\d+.-]*:/i.test(link)) continue;
       assert.ok(
         !link.startsWith('/'),
         'Use repository-relative links: ' + link,
@@ -115,7 +132,13 @@ test('supplied square PNG is the extension and README icon', async () => {
   assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(icon.readUInt32BE(16), icon.readUInt32BE(20));
   assert.ok(icon.readUInt32BE(16) >= 128);
-  assert.ok((await read('README.md')).includes('src="' + manifest.icon + '"'));
+  assert.ok(
+    (await read('README.md')).includes(
+      'src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/' +
+        manifest.icon +
+        '"',
+    ),
+  );
 });
 
 test('repository contribution and issue entry points exist', async () => {
@@ -129,4 +152,17 @@ test('repository contribution and issue entry points exist', async () => {
     '.github/PULL_REQUEST_TEMPLATE.md',
   ])
     await exactFile(file);
+});
+
+test('Marketplace README links and images use HTTPS or local section anchors', async () => {
+  const content = await read('README.md');
+  const links = [...content.matchAll(/(?:href|src)=["']([^"']+)["']/g)].map(
+    (m) => m[1],
+  );
+  links.push(
+    ...[...content.matchAll(/!?\[[^\]]*\]\(([^\s)]+)\)/g)].map((m) => m[1]),
+  );
+  assert.ok(links.length > 10);
+  for (const link of links)
+    assert.ok(link.startsWith('https://') || link.startsWith('#'), link);
 });

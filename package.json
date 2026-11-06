@@ -2,8 +2,8 @@
   "name": "remote-ssh-password-memory",
   "displayName": "Remote SSH Password Memory",
   "description": "%extension.description%",
-  "version": "0.1.4",
-  "publisher": "local-tools",
+  "version": "0.1.5",
+  "publisher": "Devlin",
   "license": "MIT",
   "engines": {
     "vscode": "^1.144.0"
@@ -75,7 +75,9 @@
     "test:docs": "node --test scripts/docs.test.mjs",
     "verify:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-package.ps1",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm test"
+    "check": "npm run format:check && npm test",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

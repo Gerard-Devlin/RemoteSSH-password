@@ -100,6 +100,26 @@ class Runtime implements vscode.Disposable {
     this.core = new CredentialCore(
       context.secrets,
       {
+        status: (event) => {
+          const messages = {
+            manual: vscode.l10n.t(
+              'This authentication request cannot use a saved password. Enter the response manually for this connection.',
+            ),
+            missing: vscode.l10n.t(
+              'No saved password matches this connection.',
+            ),
+            reused: vscode.l10n.t(
+              'A saved password was supplied for this connection.',
+            ),
+            saved: vscode.l10n.t(
+              'Password saved on this device after a successful sign-in.',
+            ),
+            rejected: vscode.l10n.t(
+              'The server rejected the password. A rejected saved copy will not be used again.',
+            ),
+          };
+          this.output.appendLine(messages[event]);
+        },
         ask: (t, p, c, f, s) => this.input(t, p, c, f, s),
         trust: (t, p, f, s) => this.trust(t, p, f, s),
         changed: (t) => {

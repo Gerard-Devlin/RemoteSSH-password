@@ -394,6 +394,32 @@ try {
     },
   );
   await check(
+    'reactivation keeps stored passwords and reconnects through a new broker',
+    async () => {
+      const before = inputCount;
+      const saved = [...secrets.entries()];
+      exports.deactivate();
+      for (const disposable of subscriptions.splice(0)) disposable.dispose();
+      await sleep(1200);
+      await exports.activate(context);
+      assert.deepEqual([...secrets.entries()], saved);
+      assert.equal((await run(bridge, args)).code, 0);
+      assert.equal(inputCount, before);
+      assert.ok(
+        messages.includes(
+          translate('A saved password was supplied for this connection.'),
+        ),
+      );
+      assert.ok(
+        messages.includes(
+          translate(
+            'Password saved on this device after a successful sign-in.',
+          ),
+        ),
+      );
+    },
+  );
+  await check(
     'rejected-password guidance asks for another attempt without implying a password reset',
     async () => {
       const replacement = 'replacement-' + randomUUID() + '-中文';

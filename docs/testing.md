@@ -42,13 +42,15 @@ npm run test:host -- -Code "C:/path/to/Microsoft VS Code/Code.exe"
 
 The script creates separate user-data/extensions directories, copies the installed dependency versions needed by the fixture, and launches seed/verify phases. Use `-ExtensionSource` if installed dependencies are elsewhere. The currently expected dependency folders are Remote-SSH 0.128.0, Remote-SSH Edit 0.87.0, and Remote Explorer 0.5.0.
 
-The fixture exercises activation, commands, and actual SecretStorage. It does not automate the interactive password and fingerprint workflow. If VS Code is updating, wait for it to finish rather than forcing a lock release. The latest recorded attempts were blocked before the assertions ran.
+The fixture wraps the production entry in a disposable test copy and accesses that copy’s actual extension-context SecretStorage. Seed and verify use the same publisher/name but different manifest versions and installation paths. It launches normal isolated VS Code processes: the standard `--extensionTestsPath` mode intentionally uses in-memory application storage and cannot prove cross-process persistence. The wrapper is excluded from the shipped VSIX.
+
+This checks activation, commands, real encrypted persistence, and deletion. It does not automate the interactive password/fingerprint workflow or a complete Remote-SSH connection. If VS Code is updating, wait for it to finish rather than forcing a lock release. See the latest report for the executed host version and results.
 
 ## CI
 
 The Windows workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, and package verification. It conditionally runs loopback and bilingual extension-entry integration when the runner's OpenSSH hash matches the pinned build. Otherwise a dedicated step and summary explicitly say **not run**. Hash checks remain enabled in both production and tests.
 
-CI does not install or interact with a real VS Code host. The workflow has been prepared locally; successful execution on GitHub is not claimed until the repository is pushed and Actions actually runs.
+CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow consumes only successful main-branch push checks, verifies their package receipt, and creates immutable GitHub Release assets; Marketplace publication is separately gated by the setup described in the [publishing guide](marketplace.md).
 
 ## Manual acceptance
 
