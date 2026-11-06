@@ -2,7 +2,7 @@ name: Release and Marketplace
 
 on:
   workflow_run:
-    workflows: ['Windows checks']
+    workflows: ['Platform checks']
     types: [completed]
     branches: [main]
 
@@ -35,7 +35,8 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v7
         with:
-          name: remote-ssh-password-memory-win32-x64
+          pattern: remote-ssh-password-memory-*
+          merge-multiple: true
           path: artifacts
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
@@ -46,7 +47,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
           CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
-        run: ./scripts/release-from-ci.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT
+        run: |
+          foreach ($target in @('win32-x64','darwin-arm64','darwin-x64')) {
+            ./scripts/release-from-ci.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT -Target $target
+          }
       - uses: actions/upload-artifact@v7
         if: steps.release.outputs.publishable == 'true'
         with:
@@ -59,7 +63,7 @@ jobs:
         shell: pwsh
         run: |
           '### Marketplace publishing is not enabled' >> $env:GITHUB_STEP_SUMMARY
-          'The verified GitHub Release is ready. Configure publisher Devlin → Trusted Publishing for publish.yml, then set the repository variable MARKETPLACE_PUBLISH_ENABLED to true and rerun Windows checks.' >> $env:GITHUB_STEP_SUMMARY
+          'The verified GitHub Release is ready. Configure publisher Devlin → Trusted Publishing for publish.yml, then set the repository variable MARKETPLACE_PUBLISH_ENABLED to true and rerun Platform checks.' >> $env:GITHUB_STEP_SUMMARY
 
   marketplace:
     needs: release
@@ -89,8 +93,10 @@ jobs:
         env:
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
         run: |
-          $artifact = ./scripts/verify-ci-artifact.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT | ConvertFrom-Json
-          & node node_modules/@vscode/vsce/vsce publish --oidc --packagePath $artifact.package --skip-duplicate
-          if ($LASTEXITCODE -ne 0) { throw 'Marketplace upload failed. Inspect the error above for package validation or Trusted Publishing details.' }
+          foreach ($target in @('win32-x64','darwin-arm64','darwin-x64')) {
+            $artifact = ./scripts/verify-ci-artifact.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT -Target $target | ConvertFrom-Json
+            & node node_modules/@vscode/vsce/vsce publish --oidc --packagePath $artifact.package --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw ('Marketplace upload failed for '+$target) }
+          }
           '### Marketplace publish step completed' >> $env:GITHUB_STEP_SUMMARY
           'Publisher: Devlin. Existing versions are never overwritten. Check https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory for platform validation and availability.' >> $env:GITHUB_STEP_SUMMARY

@@ -1,3 +1,4 @@
+import { executableName, supportedPlatform } from './platform';
 import * as vscode from 'vscode';
 import * as fs from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
@@ -368,7 +369,7 @@ class Runtime implements vscode.Disposable {
     await this.setup.ensure();
   }
   async start() {
-    if (process.platform !== 'win32' || process.arch !== 'x64') return;
+    if (!supportedPlatform()) return;
     await this.initializeSetup();
     if (!this.watching) {
       this.watching = true;
@@ -386,10 +387,14 @@ class Runtime implements vscode.Disposable {
   }
   private async launch() {
     if (this.broker || !this.enabled || this.stopping) return;
-    const broker = spawn(path.join(this.bridgeDir, 'broker.exe'), [], {
-      windowsHide: true,
-      stdio: 'pipe',
-    });
+    const broker = spawn(
+      path.join(this.bridgeDir, executableName('broker')),
+      [],
+      {
+        windowsHide: true,
+        stdio: 'pipe',
+      },
+    );
     this.broker = broker;
     let readyResolve!: () => void;
     const ready = new Promise<void>((r) => (readyResolve = r));
@@ -493,9 +498,11 @@ class Runtime implements vscode.Disposable {
     }
   }
   async enable() {
-    if (process.platform !== 'win32' || process.arch !== 'x64') {
+    if (!supportedPlatform()) {
       await vscode.window.showErrorMessage(
-        vscode.l10n.t('This extension requires local VS Code on Windows x64.'),
+        vscode.l10n.t(
+          'This extension requires local VS Code on Windows x64 or macOS (Apple Silicon or Intel).',
+        ),
       );
       return;
     }
@@ -522,7 +529,15 @@ class Runtime implements vscode.Disposable {
   }
   async manage() {
     const index: Record<string, Metadata> = {};
-    for (const key of await this.context.secrets.keys()) {
+    const storage = this.context.secrets as vscode.SecretStorage & {
+      keys?: () => Thenable<string[]>;
+    };
+    const keys = storage.keys
+      ? await storage.keys()
+      : Object.keys(
+          this.context.globalState.get<Record<string, Metadata>>(indexKey, {}),
+        );
+    for (const key of keys) {
       if (!key.startsWith('credential.v1.')) continue;
       try {
         const r = JSON.parse(

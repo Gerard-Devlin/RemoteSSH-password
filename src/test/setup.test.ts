@@ -5,20 +5,25 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { SetupManager } from '../setup';
 import { SettingSnapshot } from '../settings';
-async function fixture() {
+async function fixture(platform: 'win32' | 'darwin' = 'win32') {
+  const suffix = platform === 'win32' ? '.exe' : '';
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sshpm-setup-'));
   const extension = path.join(root, 'extension'),
     storage = path.join(root, 'storage');
   await fs.mkdir(path.join(extension, 'bin'), { recursive: true });
-  for (const file of ['ssh.exe', 'scp.exe', 'askpass.exe', 'broker.exe'])
+  for (const file of ['ssh', 'scp', 'askpass', 'broker'].map(
+    (name) => name + suffix,
+  ))
     await fs.writeFile(
       path.join(extension, 'bin', file),
       Buffer.from('fixture-native-' + file),
     );
   let settings: SettingSnapshot = {
-    path: path.join(root, 'real', 'ssh.exe'),
+    path: path.join(root, 'real', 'ssh' + suffix),
     useLocalServer: false,
   };
+  await fs.mkdir(path.dirname(settings.path!), { recursive: true });
+  await fs.writeFile(settings.path!, 'fixture OpenSSH');
   const original = { ...settings };
   let fail = false;
   const writes: string[] = [];
@@ -27,6 +32,7 @@ async function fixture() {
   let override: string | undefined;
   const options = {
     storage,
+    platform,
     extensionPath: extension,
     version: '1.0.0',
     validateSSH: async () => {},
@@ -189,3 +195,38 @@ test('an explicit off marker from the previous deployment is respected', async (
   assert.equal(await h.manager().ensure(), 'disabled');
   assert.equal(h.writes.length, 0);
 });
+
+test(
+  'macOS deploys executable helpers and restores original POSIX settings',
+  { skip: process.platform !== 'darwin' },
+  async () => {
+    const h = await fixture('darwin');
+    const manager = new SetupManager({
+      ...h.options,
+      secureDirectory: undefined,
+    });
+    assert.equal(await manager.ensure(), 'ready');
+    assert.equal(path.basename(h.settings.path!), 'ssh');
+    const directory = path.dirname(h.settings.path!);
+    for (const name of ['ssh', 'scp', 'askpass', 'broker'])
+      assert.equal(
+        (await fs.stat(path.join(directory, name))).mode & 0o777,
+        0o700,
+      );
+    assert.equal((await fs.stat(h.storage)).mode & 0o777, 0o700);
+    const config = JSON.parse(
+      await fs.readFile(path.join(directory, 'bridge.json'), 'utf8'),
+    );
+    assert.equal(
+      config.realSCP,
+      path.join(path.dirname(h.original.path!), 'scp'),
+    );
+    assert.match(config.realSSHHash, /^[a-f0-9]{64}$/);
+    const previous = h.settings.path;
+    await fs.writeFile(h.original.path!, 'updated fixture OpenSSH');
+    assert.equal(await manager.ensure(), 'ready');
+    assert.notEqual(h.settings.path, previous);
+    await manager.disable();
+    assert.deepEqual(h.settings, h.original);
+  },
+);

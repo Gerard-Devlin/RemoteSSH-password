@@ -1,5 +1,3 @@
-//go:build windows
-
 package main
 
 import (
@@ -10,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 // LogVerbose source locations are verified for this exact Windows binary.
@@ -57,28 +54,28 @@ func main() {
 	dir := filepath.Dir(exe)
 	mode := strings.ToLower(filepath.Base(exe))
 	args := os.Args[1:]
-	if len(args) == 2 && args[0] == "--secure-directory" && mode == "broker.exe" {
+	if len(args) == 2 && args[0] == "--secure-directory" && mode == executableName("broker") {
 		if secureDirectory(args[1]) != nil {
 			os.Exit(1)
 		}
 		return
 	}
-	if mode == "askpass.exe" {
+	if mode == executableName("askpass") {
 		os.Exit(runAskpass(dir, args))
 	}
-	if mode == "broker.exe" {
+	if mode == executableName("broker") {
 		os.Exit(runBroker(dir))
 	}
 	c, e := loadConfig(dir)
 	if e != nil {
-		c.RealSSH = filepath.Join(os.Getenv("WINDIR"), "System32", "OpenSSH", "ssh.exe")
-		c.RealSCP = filepath.Join(filepath.Dir(c.RealSSH), "scp.exe")
+		c.RealSSH = defaultSSH()
+		c.RealSCP = filepath.Join(filepath.Dir(c.RealSSH), executableName("scp"))
 	}
 	if !filepath.IsAbs(c.RealSSH) || samePath(c.RealSSH, exe) || samePath(filepath.Dir(c.RealSSH), dir) {
 		safeError("invalid-ssh-path")
 		os.Exit(255)
 	}
-	if mode == "scp.exe" {
+	if mode == executableName("scp") {
 		if !filepath.IsAbs(c.RealSCP) || samePath(filepath.Dir(c.RealSCP), dir) {
 			os.Exit(255)
 		}
@@ -90,17 +87,13 @@ func main() {
 				}
 			}
 			if !found {
-				args = append([]string{"-S", filepath.Join(dir, "ssh.exe")}, args...)
+				args = append([]string{"-S", filepath.Join(dir, executableName("ssh"))}, args...)
 			}
 		}
 		os.Exit(passthrough(c.RealSCP, args))
 	}
 	os.Exit(runSSH(dir, c, args))
 }
-func hidden() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
-}
-
 func fileHash(file string) string {
 	b, e := os.ReadFile(file)
 	if e != nil {

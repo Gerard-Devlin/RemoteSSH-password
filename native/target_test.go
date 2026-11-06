@@ -1,7 +1,9 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -76,8 +78,13 @@ func TestEnvironmentReplacement(t *testing.T) {
 	}
 }
 func TestPipeName(t *testing.T) {
-	if !strings.HasPrefix(stablePipe("C:/test"), "\\\\.\\pipe\\") {
-		t.Fatal("invalid Windows pipe")
+	name := stablePipe("C:/test")
+	if runtime.GOOS == "windows" {
+		if !strings.HasPrefix(name, `\\.\pipe\`) {
+			t.Fatal("invalid Windows pipe")
+		}
+	} else if !filepath.IsAbs(name) || len(name)+len("-window-")+48 >= 104 {
+		t.Fatal("invalid Unix socket path")
 	}
 }
 
@@ -97,7 +104,7 @@ func TestTaggedSuccess(t *testing.T) {
 
 func TestQuietArgs(t *testing.T) {
 	a := []string{"-vT", "-oLogLevel=DEBUG3", "-o", "LogVerbose=*", "-p22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}
-	v := quietArgs(a)
+	v := windowsQuietArgs(a)
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
 	}
@@ -150,5 +157,13 @@ func TestInteractivePassword(t *testing.T) {
 	}
 	if promptKind("(alice@server) Password: ", "", target, s) != "manual" {
 		t.Fatal("partial conversation eligible")
+	}
+}
+
+func TestAppleTaggedDiagnostics(t *testing.T) {
+	line := `debug1: sshconnect.c:verify_host_key():1678 (bin=/usr/bin/ssh, pid=123): Server host key: ssh-ed25519 ` + testFP
+	m := taggedLog.FindStringSubmatch(line)
+	if m == nil || m[2] != "verify_host_key" || m[4] != "123" {
+		t.Fatal("Apple diagnostic not recognized")
 	}
 }

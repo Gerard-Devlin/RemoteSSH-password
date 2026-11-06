@@ -19,15 +19,22 @@ if (process.platform === 'win32' && process.env.WINDIR) {
     if (!['ENOENT', 'EACCES'].includes(error.code)) throw error;
   }
 }
-const supported = actual === TESTED_SSH_SHA256;
+let supported = actual === TESTED_SSH_SHA256;
+if (process.platform === 'darwin') {
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync('/usr/bin/ssh', ['-V'], { encoding: 'utf8' });
+  actual = (result.stdout + result.stderr).trim();
+  const match = /^OpenSSH_(\d+)\./.exec(actual);
+  supported = result.status === 0 && !!match && Number(match[1]) >= 9;
+}
 const summary = [
   '### OpenSSH integration coverage',
   '',
-  'System ssh.exe SHA256: `' + actual + '`.',
+  'System OpenSSH: `' + actual + '`.',
   '',
   supported
     ? 'The supported build is present. Loopback and bilingual mocked-API integration steps will run; see their step results.'
-    : '**NOT RUN:** loopback and bilingual mocked-API integration require the pinned OpenSSH build. Unit tests and packaging do not replace this coverage.',
+    : '**NOT RUN:** loopback and bilingual mocked-API integration require a supported OpenSSH build. Unit tests and packaging do not replace this coverage.',
   '',
   'Real VS Code host/UI and manual Remote-SSH acceptance are not run by this workflow.',
   '',

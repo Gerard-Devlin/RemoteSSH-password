@@ -2,6 +2,7 @@ param(
  [Parameter(Mandatory=$true)][string]$ArtifactDirectory,
  [Parameter(Mandatory=$true)][string]$ExpectedCommit,
  [string]$ExpectedPublisher='Devlin',
+ [ValidateSet('win32-x64','darwin-arm64','darwin-x64')][string]$Target='win32-x64',
  [string]$ExpectedSha256=''
 )
 $ErrorActionPreference='Stop'
@@ -10,10 +11,10 @@ $project=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $metadata=Get-Content -LiteralPath (Join-Path $project 'package.json') -Raw | ConvertFrom-Json
 if($metadata.publisher -cne $ExpectedPublisher -or $metadata.name -notmatch '^[a-z0-9][a-z0-9-]*$' -or $metadata.version -notmatch '^\d+\.\d+\.\d+$'){throw 'Unexpected source identity'}
 $directory=(Resolve-Path -LiteralPath $ArtifactDirectory).Path
-$record=Get-Content -LiteralPath (Join-Path $directory 'package-verification.json') -Raw | ConvertFrom-Json
-$filename=$metadata.name+'-'+$metadata.version+'-win32-x64.vsix'
+$record=Get-Content -LiteralPath (Join-Path $directory ('package-verification-'+$Target+'.json')) -Raw | ConvertFrom-Json
+$filename=$metadata.name+'-'+$metadata.version+'-'+$Target+'.vsix'
 $package=Join-Path $directory $filename
-if($record.verified -ne $true -or $record.publisher -cne $ExpectedPublisher -or $record.extensionId -cne ($ExpectedPublisher+'.'+$metadata.name) -or $record.version -cne $metadata.version -or $record.target -ne 'win32-x64' -or $record.sourceCommit -ine $ExpectedCommit){throw 'CI verification record does not match the trusted source commit and identity'}
+if($record.verified -ne $true -or $record.publisher -cne $ExpectedPublisher -or $record.extensionId -cne ($ExpectedPublisher+'.'+$metadata.name) -or $record.version -cne $metadata.version -or $record.target -ne $Target -or $record.sourceCommit -ine $ExpectedCommit){throw 'CI verification record does not match the trusted source commit and identity'}
 function Hash-Bytes([byte[]]$bytes){
  $sha=[Security.Cryptography.SHA256]::Create()
  try{return [BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
@@ -40,6 +41,6 @@ try{
  [xml]$manifest=[Text.Encoding]::UTF8.GetString($manifestBytes)
  $identity=$manifest.PackageManifest.Metadata.Identity
  $packaged=[Text.Encoding]::UTF8.GetString($packageBytes) | ConvertFrom-Json
- if($identity.TargetPlatform -ne 'win32-x64' -or $identity.Id -cne $metadata.name -or $identity.Version -cne $metadata.version -or $identity.Publisher -ine $ExpectedPublisher -or $packaged.publisher -cne $ExpectedPublisher -or $packaged.name -cne $metadata.name -or $packaged.version -cne $metadata.version){throw 'CI package identity mismatch'}
- [pscustomobject]@{package=(Resolve-Path -LiteralPath $package).Path; filename=$filename; sha256=$digest; version=$metadata.version; publisher=$ExpectedPublisher; sourceCommit=$ExpectedCommit; verified=$true} | ConvertTo-Json
+ if($identity.TargetPlatform -ne $Target -or $identity.Id -cne $metadata.name -or $identity.Version -cne $metadata.version -or $identity.Publisher -ine $ExpectedPublisher -or $packaged.publisher -cne $ExpectedPublisher -or $packaged.name -cne $metadata.name -or $packaged.version -cne $metadata.version){throw 'CI package identity mismatch'}
+ [pscustomobject]@{package=(Resolve-Path -LiteralPath $package).Path; filename=$filename; sha256=$digest; version=$metadata.version; publisher=$ExpectedPublisher; sourceCommit=$ExpectedCommit; verified=$true; target=$Target} | ConvertTo-Json
 }finally{$zip.Dispose()}

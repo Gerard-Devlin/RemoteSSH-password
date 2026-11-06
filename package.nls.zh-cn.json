@@ -1,5 +1,5 @@
 {
-  "extension.description": "为 Microsoft Remote-SSH 在本机记住 SSH 登录密码，支持 Windows x64（预览版）。",
+  "extension.description": "为 Microsoft Remote-SSH 在本机记住 SSH 登录密码，支持 Windows x64 和 macOS（预览版）。",
   "command.category": "SSH 密码记忆",
   "command.enable": "启用",
   "command.disable": "关闭并恢复 SSH 设置",

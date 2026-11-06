@@ -1,5 +1,5 @@
 {
-  "extension.description": "Save SSH passwords on this device for Microsoft Remote-SSH. Windows x64 preview.",
+  "extension.description": "Save SSH passwords on this device for Microsoft Remote-SSH. Windows x64 and macOS preview.",
   "command.category": "SSH Password Memory",
   "command.enable": "Enable",
   "command.disable": "Disable and Restore SSH Settings",

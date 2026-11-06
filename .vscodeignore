@@ -9,7 +9,8 @@ artifacts/**
 .vscode/**
 **/*.map
 dist/test/**
-bin/testserver.exe
+bin/testserver*
+bin/build-target.json
 tsconfig.json
 package-lock.json
 .gitignore

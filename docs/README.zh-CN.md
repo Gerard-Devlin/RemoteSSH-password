@@ -2,9 +2,11 @@
 
 [English README](../README.md) · [兼容范围（英文）](compatibility.md) · [恢复说明（英文）](troubleshooting.md)
 
-Windows x64 的 VS Code 扩展，配合 Microsoft Remote-SSH 使用。首次输入固定密码后可选择记住；只有 OpenSSH 确认密码认证成功才写入 VS Code SecretStorage。
+Windows x64 和 macOS（Apple 芯片 / Intel）的 VS Code 扩展，配合 Microsoft Remote-SSH 使用。首次输入固定密码后可选择记住；只有 OpenSSH 确认密码认证成功才写入 VS Code SecretStorage。
 
-> 当前为 0.2.0 预览版，仅支持一个精确校验的 OpenSSH 构建。隔离 VS Code 环境中的 SecretStorage 跨重启测试已通过；完整 Remote-SSH 交互流程和界面视觉验收仍待完成。请先阅读[兼容范围](compatibility.md)和[测试报告](testing/2026-11-06.md)。
+> 当前为 0.3.0 预览版，最低支持 VS Code 1.85.0（包含 1.136.1）。Windows 仍校验已支持的 OpenSSH 精确构建；Mac 使用系统 OpenSSH 9.0+。请先阅读[兼容范围](compatibility.md)和[当前测试报告](testing/2026-11-07.md)。
+
+Mac 打开命令面板使用 **Cmd+Shift+P**。若交互式密码被拒绝，当前连接后续请求会保守地按手动验证处理；重新连接后可再次记住固定密码。
 
 ## 从旧版迁移
 
@@ -14,7 +16,8 @@ Publisher 现为 `Devlin`。若已安装 `local-tools` 预览版，请先在旧�
 
 ## 安装与连接
 
-1. 在本地 Windows x64 VS Code 安装 Microsoft Remote-SSH，再从[应用商店](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory)安装本扩展，确认发布者为 **Devlin**。也可从 [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) 下载 `remote-ssh-password-memory-0.2.0-win32-x64.vsix`，通过“从 VSIX 安装”手动安装。
+1. 在本地 Windows x64 或 macOS VS Code 安装 Microsoft Remote-SSH，再从[应用商店](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory)安装本扩展，确认发布者为 **Devlin**。也可从 [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) 下载 `remote-ssh-password-memory-0.3.0-win32-x64.vsix`，通过“从 VSIX 安装”手动安装。
+   Mac 请按本地 VS Code 架构选择 `remote-ssh-password-memory-0.3.0-darwin-arm64.vsix`（Apple 芯片）或 `remote-ssh-password-memory-0.3.0-darwin-x64.vsix`（Intel）。
 2. 安装后会自动接入，无需再运行“启用”命令或确认设置弹窗。
 3. 继续用 Remote-SSH 选择服务器，先核对首次信任的服务器指纹。
 4. 在 VS Code 隐藏密码框输入固定密码，选择“记住到本机”或“仅本次使用”。

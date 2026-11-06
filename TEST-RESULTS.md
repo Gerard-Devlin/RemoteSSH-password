@@ -2,7 +2,7 @@
 
 The detailed evidence has moved into the documentation tree.
 
-- [Latest local report: 2026-11-06](docs/testing/2026-11-06.md)
+- [Latest local report: 2026-11-07](docs/testing/2026-11-07.md)
 - [Test strategy, commands, and manual acceptance](docs/testing.md)
 - [Compatibility contract](docs/compatibility.md)
 

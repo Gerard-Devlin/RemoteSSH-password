@@ -2,11 +2,11 @@
   "name": "remote-ssh-password-memory",
   "displayName": "Remote SSH Password Memory",
   "description": "%extension.description%",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "Devlin",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.144.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "Other"
@@ -64,27 +64,29 @@
     "test:ts": "node --test dist/test/*.test.js",
     "test:native": "cd native && go test ./...",
     "test": "npm run compile && npm run test:ts && npm run test:localization && npm run test:docs && npm run test:native",
-    "package": "npm run build && node scripts/package.mjs",
+    "package": "npm run compile && node scripts/package.mjs",
     "test:integration": "npm run build && npm run build:fixture && node scripts/integration.mjs",
     "test:race": "cd native && go test -race ./...",
-    "build:fixture": "cd native/testserver && go build -o ../../bin/testserver.exe .",
+    "build:fixture": "node scripts/build-fixture.mjs",
     "test:host": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/host-tests.ps1",
     "format": "prettier --write . && cd native && go fmt ./... && cd testserver && go fmt ./...",
     "test:extension": "npm run build && npm run build:fixture && node scripts/extension-tests.mjs en && node scripts/extension-tests.mjs zh-cn",
     "test:localization": "node --test scripts/localization.test.mjs",
     "test:docs": "node --test scripts/docs.test.mjs",
-    "verify:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-package.ps1",
+    "verify:package": "node scripts/verify-package.mjs",
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm test",
     "version:patch": "node scripts/bump-version.mjs patch",
-    "version:minor": "node scripts/bump-version.mjs minor"
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "package:all": "npm run compile && node scripts/package-all.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/vscode": "^1.144.0",
+    "@types/vscode": "1.85.0",
     "@vscode/vsce": "^4.1.0",
     "typescript": "^5.9.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "yauzl": "^3.4.0"
   },
   "overrides": {
     "minimatch": "^11.0.1"
@@ -95,7 +97,8 @@
     "remote-ssh",
     "password",
     "windows",
-    "secretstorage"
+    "secretstorage",
+    "macos"
   ],
   "icon": "media/icon.png",
   "repository": {

@@ -1,3 +1,5 @@
+import { suffix, realSSH, nullDevice } from './platform.mjs';
+import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import fs from 'node:fs/promises';
@@ -11,9 +13,13 @@ const { CredentialCore, keyFor } = require('../dist/core.js');
 const root = process.cwd(),
   dir = path.join(root, '.test-runtime', randomUUID());
 await fs.mkdir(dir, { recursive: true });
-for (const n of ['ssh.exe', 'scp.exe', 'askpass.exe', 'broker.exe'])
+for (const n of [
+  'ssh' + suffix,
+  'scp' + suffix,
+  'askpass' + suffix,
+  'broker' + suffix,
+])
   await fs.copyFile(path.join(root, 'bin', n), path.join(dir, n));
-const realSSH = path.join(process.env.WINDIR, 'System32', 'OpenSSH', 'ssh.exe');
 await fs.writeFile(
   path.join(dir, 'bridge.json'),
   JSON.stringify({
@@ -21,7 +27,7 @@ await fs.writeFile(
     realSSHHash: createHash('sha256')
       .update(await fs.readFile(realSSH))
       .digest('hex'),
-    realSCP: path.join(path.dirname(realSSH), 'scp.exe'),
+    realSCP: path.join(path.dirname(realSSH), 'scp' + suffix),
     enabled: true,
   }),
 );
@@ -61,7 +67,7 @@ async function until(fn, ms = 5000) {
   }
 }
 async function server(config = {}) {
-  const p = proc(path.join(root, 'bin', 'testserver.exe'));
+  const p = proc(path.join(root, 'bin', 'testserver' + suffix));
   let ready;
   const events = [];
   let stderr = '';
@@ -111,7 +117,7 @@ function makeCore() {
 }
 async function broker() {
   const core = makeCore(),
-    p = proc(path.join(dir, 'broker.exe'));
+    p = proc(path.join(dir, 'broker' + suffix));
   p.on('close', () => core.clear());
   let route;
   let errors = 0;
@@ -162,7 +168,7 @@ function base(port, opts = []) {
     '-o',
     'UserKnownHostsFile=' + known,
     '-o',
-    'GlobalKnownHostsFile=NUL',
+    'GlobalKnownHostsFile=' + nullDevice,
     '-o',
     'StrictHostKeyChecking=ask',
     '-o',
@@ -201,7 +207,12 @@ async function run(exe, args, route, input = '') {
   return { code, stdout, stderr };
 }
 const ssh = (srv, b, args = [], input = '') =>
-  run(path.join(dir, 'ssh.exe'), [...base(srv.port), ...args], b?.route, input);
+  run(
+    path.join(dir, 'ssh' + suffix),
+    [...base(srv.port), ...args],
+    b?.route,
+    input,
+  );
 async function check(name, f) {
   try {
     await f();
@@ -218,13 +229,13 @@ try {
   await sleep(1200);
   await check('ssh -V is byte-compatible', async () => {
     const a = await run(realSSH, ['-V']),
-      v = await run(path.join(dir, 'ssh.exe'), ['-V']);
+      v = await run(path.join(dir, 'ssh' + suffix), ['-V']);
     assert.equal(v.code, a.code);
     assert.equal(v.stderr, a.stderr);
   });
   await check('ssh -G is byte-compatible', async () => {
     const a = await run(realSSH, ['-G', ...base(s.port)]),
-      v = await run(path.join(dir, 'ssh.exe'), ['-G', ...base(s.port)]);
+      v = await run(path.join(dir, 'ssh' + suffix), ['-G', ...base(s.port)]);
     assert.equal(v.stdout, a.stdout);
   });
   await check('first trust + password + authenticated commit', async () => {
@@ -262,7 +273,7 @@ try {
       '-o',
       'UserKnownHostsFile=' + known,
       '-o',
-      'GlobalKnownHostsFile=NUL',
+      'GlobalKnownHostsFile=' + nullDevice,
       '-o',
       'StrictHostKeyChecking=ask',
       '-o',
@@ -272,12 +283,12 @@ try {
       source,
       'fixture@127.0.0.1:upload.txt',
     ];
-    const r = await run(path.join(dir, 'scp.exe'), args, b.route);
+    const r = await run(path.join(dir, 'scp' + suffix), args, b.route);
     if (r.code !== 0) console.log(r.stderr, JSON.stringify(s.events));
     assert.equal(r.code, 0);
     assert.equal(
       await fs.readFile(
-        path.join(process.env.TEMP, 'sshpm-sftp-fixture', 'upload.txt'),
+        path.join(os.tmpdir(), 'sshpm-sftp-fixture', 'upload.txt'),
         'utf8',
       ),
       'scp-test',
@@ -302,7 +313,7 @@ try {
     async () => {
       await s.password('temporarily-invalid');
       const r = await run(
-        path.join(dir, 'ssh.exe'),
+        path.join(dir, 'ssh' + suffix),
         [...base(s.port, ['-o', 'NumberOfPasswordPrompts=1']), 'fixture'],
         b.route,
       );
@@ -347,7 +358,7 @@ try {
     secretStrings.push(answer);
     const before = secrets.size;
     const r = await run(
-      path.join(dir, 'ssh.exe'),
+      path.join(dir, 'ssh' + suffix),
       [...base(s2.port, ['-o', 'NumberOfPasswordPrompts=1']), 'fixture'],
       b.route,
     );
@@ -361,7 +372,7 @@ try {
     assert.equal(
       (
         await run(
-          path.join(dir, 'ssh.exe'),
+          path.join(dir, 'ssh' + suffix),
           ['-tt', ...base(s.port), 'fixture'],
           b.route,
         )
@@ -379,7 +390,7 @@ try {
     const localPort = temp.address().port;
     await new Promise((r) => temp.close(r));
     const tunnel = proc(
-      path.join(dir, 'ssh.exe'),
+      path.join(dir, 'ssh' + suffix),
       ['-N', '-L', localPort + ':127.0.0.1:' + echoPort, ...base(s.port)],
       { env: { ...process.env, SSHPM_WINDOW_PIPE: b.route } },
     );
@@ -408,7 +419,7 @@ try {
     const args = base(s.port);
     args[args.length - 1] = 'other@127.0.0.1';
     assert.equal(
-      (await run(path.join(dir, 'ssh.exe'), [...args, 'fixture'], b.route))
+      (await run(path.join(dir, 'ssh' + suffix), [...args, 'fixture'], b.route))
         .code,
       0,
     );
@@ -494,7 +505,7 @@ try {
         n = prompts;
       try {
         const r = await run(
-          path.join(dir, 'ssh.exe'),
+          path.join(dir, 'ssh' + suffix),
           [
             ...base(String(idle.address().port), ['-o', 'ConnectTimeout=1']),
             'fixture',
@@ -523,9 +534,13 @@ try {
       answerDelay = 600;
       const before = secrets.size,
         n = prompts;
-      const p = proc(path.join(dir, 'ssh.exe'), [...base(s2.port), 'fixture'], {
-        env: { ...process.env, SSHPM_WINDOW_PIPE: b2.route },
-      });
+      const p = proc(
+        path.join(dir, 'ssh' + suffix),
+        [...base(s2.port), 'fixture'],
+        {
+          env: { ...process.env, SSHPM_WINDOW_PIPE: b2.route },
+        },
+      );
       p.stdout.resume();
       p.stderr.resume();
       await until(() => prompts > n);
@@ -596,7 +611,7 @@ try {
       const b2 = await broker(),
         n = prompts;
       const r = await run(
-        path.join(dir, 'ssh.exe'),
+        path.join(dir, 'ssh' + suffix),
         [...base(s.port, ['-o', 'BatchMode=yes']), 'fixture'],
         '\\\\.\\pipe\\sshpm-absent-' + randomUUID(),
       );
@@ -620,7 +635,7 @@ try {
           { realSSHHash: 'unrecognized-build' },
         ]) {
           await fs.writeFile(cfgFile, JSON.stringify({ ...cfg, ...change }));
-          const r = await run(path.join(dir, 'ssh.exe'), args, b2.route);
+          const r = await run(path.join(dir, 'ssh' + suffix), args, b2.route);
           assert.equal(r.code, real.code);
           assert.equal(r.stderr, real.stderr);
           assert.equal(prompts, n);
@@ -671,7 +686,7 @@ try {
     'unavailable extension preserves ordinary OpenSSH behavior',
     async () => {
       for (const c of children)
-        if (c.spawnfile.endsWith('broker.exe')) c.stdin.end();
+        if (c.spawnfile.endsWith('broker' + suffix)) c.stdin.end();
       await sleep(300);
       const args = [
         '-o',
@@ -683,7 +698,7 @@ try {
         '127.0.0.1',
       ];
       const real = await run(realSSH, args),
-        wrapped = await run(path.join(dir, 'ssh.exe'), args);
+        wrapped = await run(path.join(dir, 'ssh' + suffix), args);
       assert.equal(wrapped.code, real.code);
       assert.equal(wrapped.stderr, real.stderr);
     },

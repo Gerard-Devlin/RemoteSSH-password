@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-07
+
+- Add macOS Apple Silicon and Intel native helpers, protected Unix sockets, kernel peer/process identity checks, and a private diagnostic FIFO separate from server output.
+- Lower the VS Code minimum from 1.144.0 to 1.85.0 and compile against that API; support password management on hosts without SecretStorage.keys(). This fixes the installation rejection reported on VS Code 1.136.1.
+- Package and verify Windows x64, macOS arm64, and macOS x64 independently. Extend CI and canonical release/Marketplace distribution to all three targets.
+- Preserve Windows authentication filters. On macOS, avoid server-controlled method-list logs and conservatively keep later keyboard-interactive requests manual after rejection.
+- Add Windows and macOS badges and installation instructions to the README.
+
 ## 0.2.0 — 2026-11-06
 
 - Start password memory automatically after local installation/activation; remove the setup confirmation and manual Enable requirement. Explicit disable and later user SSH setting changes remain respected.

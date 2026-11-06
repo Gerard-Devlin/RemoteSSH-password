@@ -13,7 +13,7 @@
 | ASKPASS helper          | Relay the active child's prompt and return its answer through pipes/stdout.                                                                                                            |
 | SCP bridge              | Launch real SCP and direct its SSH transport through the adjacent SSH bridge.                                                                                                          |
 
-The four Windows executables are the same Go binary dispatched by filename. Production communication uses local named pipes, not a TCP listener. The isolated test server is a separate Go module and is never packaged.
+The four platform helper executables are the same Go binary dispatched by filename. Production communication uses Windows named pipes or protected macOS Unix sockets, not a TCP listener. The isolated test server is a separate Go module and is never packaged.
 
 ## Connection and persistence
 
@@ -25,7 +25,7 @@ The four Windows executables are the same Go binary dispatched by filename. Prod
 6. A new remembered candidate remains in memory until the active SSH child reports the validated successful password-authentication sequence. Only then may the owning extension host persist it.
 7. Rejection, cancellation, disconnect, revocation, and disable clear or invalidate candidates according to the credential state machine. A network failure alone does not delete an old saved value.
 
-## Windows and storage lifecycle
+## Windows, macOS and storage lifecycle
 
 Each window owns its route. An explicitly stale route fails instead of choosing another window. A current-user coordinator merges only compatible in-flight requests for the same target/fingerprint/rejection state; it is not a native password cache.
 
@@ -36,3 +36,9 @@ Complete immutable `globalStorageUri/bridge-v2/<version-hash>` generations survi
 Manifest contributions use `package.nls.json` and `package.nls.zh-cn.json`. Runtime UI uses English literal keys in `vscode.l10n.t` and the Simplified Chinese bundle in `l10n/`. VS Code loads the selected locale. Authentication challenges, target metadata, fingerprint values, and parser inputs are not translated. Recognized host-trust requests use localized labels around the original key details. Native helpers do not display a separate password UI.
 
 See the [security model](../SECURITY.md) for the trust boundary, exact-build restrictions, and known limitations.
+
+## macOS native boundary
+
+macOS builds link libproc through cgo to validate actual executable paths. Unix socket peer UID/PID and process ancestry bind ASKPASS to the active SSH child and each SSH wrapper to its local window. Current-user-only socket directories use short paths under `/tmp`, independent of potentially long or Unicode profile paths.
+
+The system SSH closes inherited extra descriptors. Its local diagnostics therefore use `-E` into a private FIFO, with a parent writer held until child exit to preserve EOF ordering. The FIFO reader uses blocking mode because Darwin kqueue does not signal FIFO writer closure reliably. Server stderr remains separate, and server-provided method-list callsites stay disabled.

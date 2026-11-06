@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { executableName } from './platform';
 export interface SettingSnapshot {
   path?: string;
   useLocalServer?: boolean;
@@ -24,8 +25,6 @@ export function restoration(
   return result;
 }
 
-const sameWindowsPath = (a: string, b: string) =>
-  path.win32.resolve(a).toLowerCase() === path.win32.resolve(b).toLowerCase();
 const validPath = (value: unknown): value is string =>
   typeof value === 'string' &&
   value.length > 0 &&
@@ -36,10 +35,19 @@ const objectValue = (value: unknown): value is Record<string, unknown> =>
 export function managedBridgeDirectory(
   executable: string | undefined,
   directories: readonly string[],
+  platform: NodeJS.Platform = 'win32',
 ): string | undefined {
   if (!validPath(executable)) return;
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  const sameWindowsPath = (a: string, b: string) =>
+    platform === 'win32'
+      ? paths.resolve(a).toLowerCase() === paths.resolve(b).toLowerCase()
+      : paths.resolve(a) === paths.resolve(b);
   return directories.find((dir) =>
-    sameWindowsPath(executable, path.win32.join(dir, 'ssh.exe')),
+    sameWindowsPath(
+      executable,
+      paths.join(dir, executableName('ssh', platform)),
+    ),
   );
 }
 export interface SSHSelection {
@@ -55,8 +63,14 @@ export function selectSSHSettings(
   directories: readonly string[],
   recovery?: unknown,
   configuration?: unknown,
+  platform: NodeJS.Platform = 'win32',
 ): SSHSelection {
-  const directory = managedBridgeDirectory(current.path, directories);
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  const sameWindowsPath = (a: string, b: string) =>
+    platform === 'win32'
+      ? paths.resolve(a).toLowerCase() === paths.resolve(b).toLowerCase()
+      : paths.resolve(a) === paths.resolve(b);
+  const directory = managedBridgeDirectory(current.path, directories, platform);
   if (!directory)
     return {
       original: { ...current },
@@ -65,14 +79,14 @@ export function selectSSHSettings(
     };
   const usable = (value: unknown): value is string =>
     validPath(value) &&
-    path.win32.isAbsolute(value) &&
-    !directories.some((dir) => sameWindowsPath(path.win32.dirname(value), dir));
+    paths.isAbsolute(value) &&
+    !directories.some((dir) => sameWindowsPath(paths.dirname(value), dir));
   if (
     objectValue(recovery) &&
     validPath(recovery.bridgePath) &&
     sameWindowsPath(
       recovery.bridgePath,
-      path.win32.join(directory, 'ssh.exe'),
+      paths.join(directory, executableName('ssh', platform)),
     ) &&
     objectValue(recovery.original)
   ) {

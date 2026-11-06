@@ -1,13 +1,14 @@
 param(
  [Parameter(Mandatory=$true)][string]$ArtifactDirectory,
- [Parameter(Mandatory=$true)][string]$ExpectedCommit
+ [Parameter(Mandatory=$true)][string]$ExpectedCommit,
+ [ValidateSet('win32-x64','darwin-arm64','darwin-x64')][string]$Target='win32-x64'
 )
 $ErrorActionPreference='Stop'
 if(!$env:GH_TOKEN -or !$env:GITHUB_OUTPUT -or $env:GITHUB_EVENT_NAME -ne 'workflow_run'){throw 'Run this script from the trusted distribution workflow'}
 $repository=$env:GITHUB_REPOSITORY
 if($repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'){throw 'Invalid repository'}
 $directory=(Resolve-Path -LiteralPath $ArtifactDirectory).Path
-$verified=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $directory -ExpectedCommit $ExpectedCommit | ConvertFrom-Json
+$verified=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $directory -ExpectedCommit $ExpectedCommit -Target $Target | ConvertFrom-Json
 $tag='v'+$verified.version
 $utf8=[Text.UTF8Encoding]::new($false)
 function Set-Output([string]$name,[string]$value){
@@ -48,13 +49,13 @@ if(!$release){
  $section=[regex]::Match($changelog,'(?ms)^## '+[regex]::Escape($verified.version)+'[^\n]*\n(.*?)(?=^## |\z)')
  if(!$section.Success){throw 'The version has no changelog entry'}
  $notes=$section.Groups[1].Value.Trim()+[char]10+[char]10
- $notes+='Publisher: Devlin. Platform: Windows x64. This is a preview package.'+[char]10+[char]10
+ $notes+='Publisher: Devlin. Platforms: Windows x64 and macOS (Apple Silicon and Intel). This is a preview package.'+[char]10+[char]10
  $notes+='If moving from the local-tools preview, restore its SSH settings, uninstall it, and reload VS Code before installing this Devlin package. Saved passwords do not automatically migrate. See https://github.com/'+$repository+'/blob/main/docs/marketplace.md for migration and upload instructions.'+[char]10+[char]10
  $notes+='Source commit: '+$ExpectedCommit+[char]10
  if($env:CI_RUN_URL -match '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/\d+$'){$notes+='Verified CI: '+$env:CI_RUN_URL+[char]10}
  $notesFile=Join-Path $env:RUNNER_TEMP ('sshpm-release-'+[guid]::NewGuid().ToString('N')+'.md')
  [IO.File]::WriteAllText($notesFile,$notes,$utf8)
- & gh release create $tag $verified.package (Join-Path $directory 'SHA256SUMS.txt') --repo $repository --target $ExpectedCommit --prerelease --title ($tag+' - Windows x64 preview') --notes-file $notesFile
+ & gh release create $tag $verified.package (Join-Path $directory ('SHA256SUMS-'+$Target+'.txt')) --repo $repository --target $ExpectedCommit --prerelease --title ($tag+' - Windows and macOS preview') --notes-file $notesFile
  if($LASTEXITCODE -ne 0){throw 'Release creation or asset upload failed'}
  $release=GitHub-Json ('repos/'+$repository+'/releases/tags/'+$tag)
 }
@@ -69,30 +70,30 @@ if(!$packageAsset -or $packageAsset.state -ne 'uploaded'){throw 'The release VSI
 $assetDigest=[regex]::Match([string]$packageAsset.digest,'^sha256:([a-f0-9]{64})$')
 if(!$assetDigest.Success){throw 'The release VSIX has no verified server digest'}
 $canonicalDigest=$assetDigest.Groups[1].Value
-$uploadDirectory=Join-Path $env:RUNNER_TEMP ('sshpm-upload-'+[guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $uploadDirectory | Out-Null
+$uploadDirectory=Join-Path $directory 'marketplace-upload'
+New-Item -ItemType Directory -Path $uploadDirectory -Force | Out-Null
 & gh release download $tag --repo $repository --pattern $verified.filename --dir $uploadDirectory
 if($LASTEXITCODE -ne 0){throw 'Could not download the canonical release package'}
-Copy-Item -LiteralPath (Join-Path $directory 'package-verification.json') -Destination (Join-Path $uploadDirectory 'package-verification.json')
-$canonical=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $uploadDirectory -ExpectedCommit $ExpectedCommit -ExpectedSha256 $canonicalDigest | ConvertFrom-Json
+Copy-Item -LiteralPath (Join-Path $directory ('package-verification-'+$Target+'.json')) -Destination (Join-Path $uploadDirectory ('package-verification-'+$Target+'.json'))
+$canonical=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $uploadDirectory -ExpectedCommit $ExpectedCommit -Target $Target -ExpectedSha256 $canonicalDigest | ConvertFrom-Json
 $checksumLine=$canonical.sha256+'  '+$verified.filename
-$checksumAsset=@($release.assets | Where-Object {$_.name -ceq 'SHA256SUMS.txt'}) | Select-Object -First 1
+$checksumAsset=@($release.assets | Where-Object {$_.name -ceq ('SHA256SUMS-'+$Target+'.txt')}) | Select-Object -First 1
 if($checksumAsset){
- & gh release download $tag --repo $repository --pattern 'SHA256SUMS.txt' --dir $uploadDirectory
- if($LASTEXITCODE -ne 0 -or (Get-Content -LiteralPath (Join-Path $uploadDirectory 'SHA256SUMS.txt') -Raw).Trim() -cne $checksumLine){throw 'Published checksum does not match the canonical VSIX'}
+ & gh release download $tag --repo $repository --pattern ('SHA256SUMS-'+$Target+'.txt') --dir $uploadDirectory
+ if($LASTEXITCODE -ne 0 -or (Get-Content -LiteralPath (Join-Path $uploadDirectory ('SHA256SUMS-'+$Target+'.txt')) -Raw).Trim() -cne $checksumLine){throw 'Published checksum does not match the canonical VSIX'}
 }else{
- [IO.File]::WriteAllText((Join-Path $uploadDirectory 'SHA256SUMS.txt'),$checksumLine+[char]10,$utf8)
- & gh release upload $tag (Join-Path $uploadDirectory 'SHA256SUMS.txt') --repo $repository
+ [IO.File]::WriteAllText((Join-Path $uploadDirectory ('SHA256SUMS-'+$Target+'.txt')),$checksumLine+[char]10,$utf8)
+ & gh release upload $tag (Join-Path $uploadDirectory ('SHA256SUMS-'+$Target+'.txt')) --repo $repository
  if($LASTEXITCODE -ne 0){throw 'Checksum asset upload failed'}
 }
-$record=Get-Content -LiteralPath (Join-Path $uploadDirectory 'package-verification.json') -Raw | ConvertFrom-Json
+$record=Get-Content -LiteralPath (Join-Path $uploadDirectory ('package-verification-'+$Target+'.json')) -Raw | ConvertFrom-Json
 $record.sha256=$canonical.sha256
 $record.package=$canonical.package
 $record.bytes=(Get-Item -LiteralPath $canonical.package).Length
-[IO.File]::WriteAllText((Join-Path $uploadDirectory 'package-verification.json'),($record | ConvertTo-Json -Depth 8)+[char]10,$utf8)
+[IO.File]::WriteAllText((Join-Path $uploadDirectory ('package-verification-'+$Target+'.json')),($record | ConvertTo-Json -Depth 8)+[char]10,$utf8)
 Set-Output 'upload_directory' $uploadDirectory
 Set-Output 'publishable' 'true'
 Add-Summary ('### Verified Release '+$tag)
 Add-Summary $release.html_url
-Add-Summary ('Publisher: Devlin; Windows x64; source commit '+$ExpectedCommit)
+Add-Summary (('Publisher: Devlin; '+$Target+'; source commit ')+$ExpectedCommit)
 Add-Summary ('Installer SHA256: '+$canonical.sha256)

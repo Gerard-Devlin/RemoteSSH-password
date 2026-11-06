@@ -1,5 +1,3 @@
-//go:build windows
-
 package main
 
 import (
@@ -112,7 +110,7 @@ func runBroker(dir string) int {
 func serveWindow(c net.Conn, dir string, u *uiBridge) {
 	defer c.Close()
 	pid, e := peerPID(c, false)
-	if e != nil || !samePath(processImage(pid), filepath.Join(dir, "ssh.exe")) {
+	if e != nil || !samePath(processImage(pid), filepath.Join(dir, executableName("ssh"))) {
 		return
 	}
 	ch := channel(c)
@@ -170,7 +168,7 @@ func serveWindow(c net.Conn, dir string, u *uiBridge) {
 	}
 }
 func selectWindow(dir string) (net.Conn, error) {
-	expected := filepath.Join(dir, "broker.exe")
+	expected := filepath.Join(dir, executableName("broker"))
 	if p := os.Getenv("SSHPM_WINDOW_PIPE"); p != "" {
 		return dialVerified(p, expected, 300*time.Millisecond)
 	}
@@ -238,7 +236,7 @@ func coordinatorLoop(dir string, done <-chan struct{}) {
 			go func() {
 				defer c.Close()
 				pid, e := peerPID(c, false)
-				if e != nil || !samePath(processImage(pid), filepath.Join(dir, "broker.exe")) {
+				if e != nil || !samePath(processImage(pid), filepath.Join(dir, executableName("broker"))) {
 					return
 				}
 				ch := channel(c)
@@ -283,7 +281,7 @@ func coordinatorLoop(dir string, done <-chan struct{}) {
 }
 
 func coordinate(dir string, m Message, u *uiBridge) (Message, error) {
-	c, e := dialVerified(stablePipe(dir)+"-coordinator", filepath.Join(dir, "broker.exe"), time.Second)
+	c, e := dialVerified(stablePipe(dir)+"-coordinator", filepath.Join(dir, executableName("broker")), time.Second)
 	if e != nil {
 		return u.request(m)
 	}

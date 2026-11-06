@@ -121,3 +121,32 @@ test('lost current helper state uses the same recovery rules', () => {
   assert.equal(result.migration, 'fallback');
   assert.equal(result.original.path, systemSSH);
 });
+
+test('macOS helper recovery uses POSIX names and preserves case-sensitive paths', () => {
+  const directory = '/Users/example/storage/bridge-v2/version';
+  const current = { path: directory + '/ssh', useLocalServer: true };
+  const selected = selectSSHSettings(
+    current,
+    '/usr/bin/ssh',
+    [directory],
+    {
+      bridgePath: directory + '/ssh',
+      original: { path: '/opt/Custom/bin/ssh', useLocalServer: false },
+    },
+    undefined,
+    'darwin',
+  );
+  assert.equal(selected.realSSH, '/opt/Custom/bin/ssh');
+  assert.equal(selected.migration, 'recovered');
+  assert.equal(
+    selectSSHSettings(
+      { path: directory + '/SSH' },
+      '/usr/bin/ssh',
+      [directory],
+      undefined,
+      undefined,
+      'darwin',
+    ).migration,
+    'none',
+  );
+});

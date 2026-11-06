@@ -45,7 +45,6 @@
   "Could not restart the local authentication service. Reload the local VS Code window and reconnect.": "无法重新启动本地认证服务，请重载本地 VS Code 窗口后重新连接。",
   "Could not start the authentication service": "无法启动本地认证服务",
   "Reload the local VS Code window and reconnect.": "请重载本地 VS Code 窗口后重新连接。",
-  "This extension requires local VS Code on Windows x64.": "此扩展需要在 Windows x64 的本地 VS Code 中运行。",
   "Password memory is on. Connect to a host with Remote-SSH.": "密码记忆已启用。请通过 Remote-SSH 连接服务器。",
   "Password memory is off. Saved passwords are kept.": "密码记忆已关闭，已保存的密码会保留。",
   "Last sign-in: {0}": "上次登录：{0}",
@@ -68,5 +67,6 @@
   "Local SSH helper folder: {0}": "本地 SSH 辅助程序目录：{0}",
   "Password memory starts automatically. Fixed passwords can be remembered; verification codes and key passphrases are entered each time.": "密码记忆会自动启动。固定密码可以记住；验证码和密钥口令需要每次输入。",
   "Could not complete this action": "操作未完成",
-  "Run Show Diagnostics from the Command Palette, then try again.": "请在命令面板运行“查看诊断”，检查后再重试。"
+  "Run Show Diagnostics from the Command Palette, then try again.": "请在命令面板运行“查看诊断”，检查后再重试。",
+  "This extension requires local VS Code on Windows x64 or macOS (Apple Silicon or Intel).": "此扩展需要运行在 Windows x64 或 macOS（Apple 芯片或 Intel）的本机 VS Code 中。"
 }

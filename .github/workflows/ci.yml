@@ -1,4 +1,4 @@
-name: Windows checks
+name: Platform checks
 
 on:
   push:
@@ -9,16 +9,26 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-checks-${{ github.ref }}
+  group: platform-checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            target: win32-x64
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     defaults:
       run:
-        shell: pwsh
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -50,27 +60,18 @@ jobs:
         run: npm run test:extension
       - name: Record unavailable integration coverage
         if: steps.ssh.outputs.supported != 'true'
-        run: Write-Output 'NOT RUN - loopback and extension-entry integration require the pinned system OpenSSH build. See the job summary.'
-      - name: Build Windows x64 package
-        run: npm run package
+        run: echo 'NOT RUN - the system OpenSSH build is unsupported. See the job summary.'
+      - name: Build platform package
+        run: npm run package -- --target ${{ matrix.target }}
       - name: Verify package and write distribution receipt
-        run: |
-          $record = ./scripts/verify-package.ps1 | ConvertFrom-Json
-          $commit = (& git rev-parse HEAD).Trim()
-          if ($commit -ine $env:GITHUB_SHA) { throw 'Checkout commit mismatch' }
-          $record | Add-Member -NotePropertyName sourceCommit -NotePropertyValue $commit
-          $utf8 = [Text.UTF8Encoding]::new($false)
-          [IO.File]::WriteAllText((Join-Path (Get-Location) 'artifacts/package-verification.json'), ($record | ConvertTo-Json -Depth 8), $utf8)
-          $name = [IO.Path]::GetFileName($record.package)
-          [IO.File]::WriteAllText((Join-Path (Get-Location) 'artifacts/SHA256SUMS.txt'), $record.sha256 + '  ' + $name + [char]10, $utf8)
-          Write-Output ('Verified ' + $record.extensionId + ' ' + $record.version + ' ' + $record.sha256)
+        run: node scripts/verify-package.mjs --target ${{ matrix.target }} --commit ${{ github.sha }}
       - uses: actions/upload-artifact@v7
         with:
-          name: remote-ssh-password-memory-win32-x64
+          name: remote-ssh-password-memory-${{ matrix.target }}
           path: |
             artifacts/*.vsix
-            artifacts/package-verification.json
-            artifacts/SHA256SUMS.txt
+            artifacts/package-verification-*.json
+            artifacts/SHA256SUMS-*.txt
             artifacts/integration-results.json
             artifacts/extension-results-en.json
             artifacts/extension-results-zh-cn.json

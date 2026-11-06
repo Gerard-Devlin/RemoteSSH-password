@@ -1,3 +1,5 @@
+import { suffix, realSSH, nullDevice } from './platform.mjs';
+import os from 'node:os';
 // Runs the actual compiled extension and native broker with a mocked VS Code API.
 // No real VS Code settings, SecretStorage or UI are accessed by this test.
 import fs from 'node:fs/promises';
@@ -43,7 +45,7 @@ const root = process.cwd(),
 await fs.mkdir(tmp, { recursive: true });
 await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
 const settings = new Map([
-  ['path', path.join(process.env.WINDIR, 'System32', 'OpenSSH', 'ssh.exe')],
+  ['path', realSSH],
   ['useLocalServer', false],
   ['useExecServer', true],
 ]);
@@ -72,7 +74,7 @@ class CancellationTokenSource {
   dispose() {}
 }
 const api = {
-  version: '1.144.0',
+  version: '1.136.1',
   env: { language: locale },
   l10n: { t: translate },
   ConfigurationTarget: { Global: 1 },
@@ -276,7 +278,7 @@ try {
         'legacy-scenario',
         'local-tools.remote-ssh-password-memory',
         'bridge-v1',
-        'ssh.exe',
+        'ssh' + suffix,
       );
       settings.set('path', missing);
       settings.set('useLocalServer', true);
@@ -324,7 +326,7 @@ try {
       }
     },
   );
-  const fixture = spawn(path.join(root, 'bin', 'testserver.exe'), [], {
+  const fixture = spawn(path.join(root, 'bin', 'testserver' + suffix), [], {
     windowsHide: true,
     stdio: 'pipe',
   });
@@ -350,7 +352,7 @@ try {
     '-o',
     'UserKnownHostsFile=' + known,
     '-o',
-    'GlobalKnownHostsFile=NUL',
+    'GlobalKnownHostsFile=' + nullDevice,
     '-o',
     'StrictHostKeyChecking=ask',
     '-o',
@@ -443,6 +445,19 @@ try {
       assert.ok(inspection[0].label.startsWith('fixture@127.0.0.1:'));
       assert.ok(!JSON.stringify(inspection).includes(password));
       assert.ok(!messages.join('\n').includes(password));
+    },
+  );
+  await check(
+    'password management works without the newer SecretStorage.keys API',
+    async () => {
+      const enumerate = context.secrets.keys;
+      context.secrets.keys = undefined;
+      try {
+        await commands.get('sshPasswordMemory.manage')();
+        assert.ok(inspection[0].label.startsWith('fixture@127.0.0.1:'));
+      } finally {
+        context.secrets.keys = enumerate;
+      }
     },
   );
   await check(
@@ -542,14 +557,19 @@ try {
       await commands.get('sshPasswordMemory.diagnostics')();
       assert.ok(
         messages.some((m) =>
-          m.startsWith(chinese ? '平台：win32/x64' : 'Platform: win32/x64'),
+          m.startsWith(
+            (chinese ? '平台：' : 'Platform: ') +
+              process.platform +
+              '/' +
+              process.arch,
+          ),
         ),
       );
       assert.ok(!messages.some((m) => m.includes(password)));
     },
   );
   async function interactiveServer(config = {}) {
-    const child = spawn(path.join(root, 'bin', 'testserver.exe'), [], {
+    const child = spawn(path.join(root, 'bin', 'testserver' + suffix), [], {
       windowsHide: true,
       stdio: 'pipe',
     });
@@ -617,6 +637,15 @@ try {
         await sleep(100);
         assert.equal((await run(bridge, server.request)).code, 0);
         assert.equal(inputCount, prompts + 2);
+        if (process.platform === 'darwin') {
+          assert.equal(
+            secrets.has(key),
+            false,
+            'a keyboard continuation stays manual',
+          );
+          assert.equal((await run(bridge, server.request)).code, 0);
+          assert.equal(inputCount, prompts + 3);
+        }
         assert.equal(JSON.parse(secrets.get(key)).password, replacement);
         assert.ok(!messages.join('\n').includes(replacement));
       } finally {
@@ -755,8 +784,8 @@ try {
     async () => {
       const directory = path.join(tmp, 'native-message');
       await fs.mkdir(directory);
-      const executable = path.join(directory, 'ssh.exe');
-      await fs.copyFile(path.join(root, 'bin', 'ssh.exe'), executable);
+      const executable = path.join(directory, 'ssh' + suffix);
+      await fs.copyFile(path.join(root, 'bin', 'ssh' + suffix), executable);
       await fs.writeFile(
         path.join(directory, 'bridge.json'),
         JSON.stringify({ realSSH: 'relative-ssh.exe', enabled: false }),

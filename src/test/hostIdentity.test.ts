@@ -65,3 +65,14 @@ test('server addresses retain the actual port and disambiguate IPv6', () => {
     '[2001:db8::1]:22',
   );
 });
+
+test('Apple OpenSSH fingerprint punctuation preserves the verified identity', () => {
+  const apple = prompt
+    .replace('fingerprint is ', 'fingerprint is: ')
+    .replace(fingerprint + '.', fingerprint);
+  assert.deepEqual(parseHostIdentity(apple, fingerprint), {
+    keyType: 'ED25519',
+    fingerprint,
+  });
+  assert.equal(parseHostIdentity(apple, 'SHA256:' + 'B'.repeat(43)), undefined);
+});

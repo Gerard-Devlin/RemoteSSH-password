@@ -22,7 +22,7 @@ export function parseHostIdentity(
     return;
   const keys = [
     ...normalized.matchAll(
-      /^([A-Z0-9][A-Z0-9@._+-]{0,31}) key fingerprint is[ \t]*(?:\n[ \t]*)?(SHA256:[A-Za-z0-9+/]{43})\.[ \t]*$/gm,
+      /^([A-Z0-9][A-Z0-9@._+-]{0,31}) key fingerprint is:?[ \t]*(?:\n[ \t]*)?(SHA256:[A-Za-z0-9+/]{43})\.?[ \t]*$/gm,
     ),
   ];
   const fingerprints = normalized.match(/SHA256:[A-Za-z0-9+/]{43}/g) ?? [];

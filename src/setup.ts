@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { TESTED_SSH_SHA256 } from './compatibility';
+import { defaultSSH, executableName } from './platform';
 import {
   SettingSnapshot,
   OwnedSettings,
@@ -12,12 +13,13 @@ import {
   restoration,
 } from './settings';
 const execute = promisify(execFile);
-const files = ['ssh.exe', 'scp.exe', 'askpass.exe', 'broker.exe'];
 const same = (a?: string, b?: string) =>
   a === b ||
   (!!a &&
     !!b &&
-    path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase());
+    (process.platform === 'win32'
+      ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()
+      : path.resolve(a) === path.resolve(b)));
 const equal = (a: SettingSnapshot, b: SettingSnapshot) =>
   same(a.path, b.path) && a.useLocalServer === b.useLocalServer;
 const versionOrder = (a: string, b: string) => {
@@ -36,6 +38,7 @@ interface Control {
   before?: SettingSnapshot;
 }
 export interface SetupOptions {
+  platform?: NodeJS.Platform;
   storage: string;
   extensionPath: string;
   version: string;
@@ -60,6 +63,12 @@ export class SetupError extends Error {
 }
 export class SetupManager {
   readonly controlPath: string;
+  private get platform() {
+    return this.options.platform ?? process.platform;
+  }
+  private file(name: string) {
+    return executableName(name, this.platform);
+  }
   constructor(private options: SetupOptions) {
     this.controlPath = path.join(options.storage, 'control-v2.json');
   }
@@ -90,7 +99,7 @@ export class SetupManager {
       !['pending', 'ready', 'suspended'].includes(c.status) ||
       (c.managedPath &&
         (!this.inside(c.managedPath) ||
-          path.basename(c.managedPath).toLowerCase() !== 'ssh.exe'))
+          path.basename(c.managedPath) !== this.file('ssh')))
     )
       throw new SetupError('invalid-state');
     return c;
@@ -98,8 +107,15 @@ export class SetupManager {
   private async secure(directory: string) {
     if (this.options.secureDirectory)
       return this.options.secureDirectory(directory);
+    if (this.platform === 'darwin') {
+      const info = await fs.lstat(directory);
+      if (!info.isDirectory() || info.uid !== process.getuid?.())
+        throw new SetupError('invalid-deployment');
+      await fs.chmod(directory, 0o700);
+      return;
+    }
     await execute(
-      path.join(this.options.extensionPath, 'bin', 'broker.exe'),
+      path.join(this.options.extensionPath, 'bin', this.file('broker')),
       ['--secure-directory', directory],
       { windowsHide: true, timeout: 5000 },
     );
@@ -154,16 +170,32 @@ export class SetupManager {
       const hash = createHash('sha256')
         .update(await fs.readFile(realSSH))
         .digest('hex');
-      if (hash !== TESTED_SSH_SHA256) throw new Error();
+      if (this.platform === 'win32' && hash !== TESTED_SSH_SHA256)
+        throw new Error();
       const version = await execute(realSSH, ['-V'], {
         windowsHide: true,
         timeout: 5000,
       });
-      if (
-        !(version.stdout + version.stderr).includes('OpenSSH_for_Windows_9.5p2')
-      )
-        throw new Error();
-      await fs.access(path.join(path.dirname(realSSH), 'scp.exe'));
+      const label = version.stdout + version.stderr;
+      if (this.platform === 'win32') {
+        if (!label.includes('OpenSSH_for_Windows_9.5p2')) throw new Error();
+      } else {
+        const match = /^OpenSSH_(\d+)\.(\d+)p\d+/m.exec(label);
+        if (!match || Number(match[1]) < 9) throw new Error();
+        await execute(
+          realSSH,
+          [
+            '-G',
+            '-F',
+            '/dev/null',
+            '-o',
+            'LogVerbose=*:read_passphrase():*',
+            'localhost',
+          ],
+          { timeout: 5000 },
+        );
+      }
+      await fs.access(path.join(path.dirname(realSSH), this.file('scp')));
     } catch {
       throw new SetupError('unsupported-ssh');
     }
@@ -251,7 +283,11 @@ export class SetupManager {
         this.inside(this.options.legacyOwned.bridgePath)
       )
         directories.push(path.dirname(this.options.legacyOwned.bridgePath));
-      const previous = managedBridgeDirectory(current.path, directories);
+      const previous = managedBridgeDirectory(
+        current.path,
+        directories,
+        this.platform,
+      );
       let recovery = previous
         ? await this.read(path.join(previous, 'recovery.json'))
         : undefined;
@@ -265,19 +301,24 @@ export class SetupManager {
         recovery = this.options.legacyOwned;
       const selection = selectSSHSettings(
         current,
-        path.join(
-          process.env.WINDIR || 'C:\Windows',
-          'System32',
-          'OpenSSH',
-          'ssh.exe',
-        ),
+        defaultSSH(this.platform),
         directories,
         recovery,
         previous
           ? await this.read(path.join(previous, 'bridge.json'))
           : undefined,
+        this.platform,
       );
       await this.validate(selection.realSSH);
+      const files = ['ssh', 'scp', 'askpass', 'broker'].map((name) =>
+        this.file(name),
+      );
+      const sshHash =
+        this.platform === 'win32'
+          ? TESTED_SSH_SHA256
+          : createHash('sha256')
+              .update(await fs.readFile(selection.realSSH))
+              .digest('hex');
       const payload = await Promise.all(
         files.map((file) =>
           fs.readFile(path.join(this.options.extensionPath, 'bin', file)),
@@ -285,6 +326,8 @@ export class SetupManager {
       );
       const digest = createHash('sha256');
       for (const bytes of payload) digest.update(bytes);
+      if (this.platform === 'darwin')
+        digest.update(selection.realSSH).update(sshHash);
       const directory = path.join(
         this.options.storage,
         'bridge-v2',
@@ -307,7 +350,7 @@ export class SetupManager {
         adapter.stop();
         throw new SetupError('settings-changed');
       }
-      const managedPath = path.join(directory, 'ssh.exe');
+      const managedPath = path.join(directory, this.file('ssh'));
       if (
         state?.enabled &&
         state.status === 'ready' &&
@@ -329,8 +372,8 @@ export class SetupManager {
       };
       const config = {
         realSSH: selection.realSSH,
-        realSCP: path.join(path.dirname(selection.realSSH), 'scp.exe'),
-        realSSHHash: TESTED_SSH_SHA256,
+        realSCP: path.join(path.dirname(selection.realSSH), this.file('scp')),
+        realSSHHash: sshHash,
         enabled: true,
       };
       await this.write(path.join(directory, 'bridge.json'), config);

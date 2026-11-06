@@ -48,7 +48,7 @@ This checks automatic setup, commands, real encrypted interactive-password persi
 
 ## CI
 
-The Windows workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, and package verification. It conditionally runs loopback and bilingual extension-entry integration when the runner's OpenSSH hash matches the pinned build. Otherwise a dedicated step and summary explicitly say **not run**. Hash checks remain enabled in both production and tests.
+The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, and package verification. It conditionally runs loopback and bilingual extension-entry integration when the runner's OpenSSH meets the platform contract (pinned Windows build or macOS OpenSSH 9.0+). Otherwise a dedicated step and summary explicitly say **not run**. Hash checks remain enabled in both production and tests.
 
 CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow consumes only successful main-branch push checks, verifies their package receipt, and creates immutable GitHub Release assets; Marketplace publication is separately gated by the setup described in the [publishing guide](marketplace.md).
 

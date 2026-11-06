@@ -2,6 +2,14 @@
 
 [Back to README](../README.md)
 
+## VS Code says the extension is incompatible
+
+Version 0.2.0 declared VS Code 1.144.0 as its minimum, so 1.136.1 was rejected before activation. Version 0.3.0 lowers this to 1.85.0 and uses the matching API types. Install the new package for your local platform. The earlier published package retains its original compatibility declaration until the new version is published.
+
+## macOS setup
+
+Use the package matching your local VS Code process (`darwin-arm64` or `darwin-x64`) and OpenSSH 9.0+. Diagnostics show the platform and service status. The default SSH path is `/usr/bin/ssh`; restoration after manual removal can use that existing system executable. If a keyboard-interactive password is rejected, reconnect before choosing to remember a replacement.
+
 ## Moving from the local-tools publisher
 
 Version 0.1.5 uses publisher `Devlin`, creating a new extension identity. Restore settings and uninstall the old extension before installing the new one; follow the [migration guide](marketplace.md#migrate-from-the-local-tools-preview). Passwords are not automatically migrated.
