@@ -173,6 +173,14 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
   assert.ok(links.length > 10);
   for (const link of links)
     assert.ok(link.startsWith('https://') || link.startsWith('#'), link);
+  for (const source of [
+    ...content.matchAll(/<img\s+src="(https:\/\/img\.shields\.io\/[^"]+)"/g),
+  ])
+    assert.ok(
+      new URL(source[1].replaceAll('&amp;', '&')).searchParams.get('style') ===
+        'flat-square',
+      'Shields badge must use flat-square: ' + source[1],
+    );
 });
 
 test('stable distribution is explicit and automatic distribution stays preview-only', async () => {

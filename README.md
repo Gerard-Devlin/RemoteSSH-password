@@ -5,8 +5,12 @@
 <h1 align="center">Remote SSH Password Memory</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&amp;logoColor=white" alt="Windows x64">
-  <img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&amp;logoColor=white" alt="macOS Apple Silicon and Intel">
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Gerard-Devlin/RemoteSSH-password/ci.yml?branch=main&amp;style=flat-square&amp;label=CI" alt="CI status"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version 1.0.0"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="GitHub stars"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="MIT license"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&amp;logoColor=white&amp;style=flat-square" alt="Windows x64"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&amp;logoColor=white&amp;style=flat-square" alt="macOS Apple Silicon and Intel"></a>
 </p>
 
 <p align="center">Remember fixed SSH passwords in VS Code. Keep using Microsoft Remote-SSH.</p>
