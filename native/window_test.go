@@ -28,3 +28,23 @@ func TestWindowInstanceUsesVSCodeIdentity(t *testing.T) {
 		t.Fatalf("unexpected instance identity: %q", got)
 	}
 }
+
+func TestStaleRouteSelectionStaysWithinVSCodeInstance(t *testing.T) {
+	windows := []windowInfo{
+		{Pipe: "other", Parent: 9, Instance: "pid:2", Focused: 300},
+		{Pipe: "current", Parent: 99, Instance: "pid:1", Focused: 200},
+	}
+	if got := chooseWindowForInstance(
+		windows,
+		"pid:1",
+		map[uint32]int{9: 1},
+	); got != "current" {
+		t.Fatalf("stale route left the current instance: %q", got)
+	}
+	if got := chooseWindowForInstance(windows, "pid:3", nil); got != "" {
+		t.Fatalf("unknown instance borrowed another broker: %q", got)
+	}
+	if got := chooseWindowForInstance(windows, "", nil); got != "" {
+		t.Fatalf("missing instance identity did not fail closed: %q", got)
+	}
+}

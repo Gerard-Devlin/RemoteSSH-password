@@ -5,8 +5,15 @@
 <h1 align="center">Remote SSH Password Memory</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&amp;logoColor=white" alt="Windows x64">
-  <img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&amp;logoColor=white" alt="macOS Apple Silicon and Intel">
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40NDkgOS43NSAyLjF2OS40NTFIMG0xMC45NDktOS42MDJMMjQgMHYxMS40SDEwLjk0OU0wIDEyLjZoOS43NXY5LjQ1MUwwIDIwLjY5OW0xMC45NDktOC4wOTlIMjRWMjRsLTEzLjA1MS0xLjg1MSIvPjwvc3ZnPg%3D%3D&amp;logoColor=white&amp;style=flat-square" alt="Windows x64"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&amp;logoColor=white&amp;style=flat-square" alt="macOS Apple Silicon and Intel"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Gerard-Devlin/RemoteSSH-password/ci.yml?branch=main&amp;style=flat-square&amp;label=CI" alt="CI status"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version 1.0.0"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="MIT license"></a>
 </p>
 
 <p align="center">Remember fixed SSH passwords in VS Code. Keep using Microsoft Remote-SSH.</p>
@@ -22,7 +29,7 @@
 
 A Windows x64 and macOS companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Preview 0.3.2.** Includes Windows x64 and separate macOS Apple Silicon / Intel packages. The minimum VS Code API is 1.85.0, including compatibility with 1.136.1. See the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [current test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-07.md) for validation coverage.
+> **Version 1.0.0.** Includes Windows x64 and separate macOS Apple Silicon / Intel packages. The minimum VS Code API is 1.85.0, including compatibility with 1.136.1. See the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [current test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-07.md) for validation coverage.
 
 ## Features
 
@@ -43,7 +50,7 @@ A Windows x64 and macOS companion extension for [Microsoft Remote-SSH](https://c
 - Windows **x64** or macOS **Apple Silicon / Intel**, using the local VS Code UI extension host.
 - VS Code **1.85.0+**; the inspected Remote-SSH integration is **0.128.0**.
 - Windows OpenSSH **9.5p2** with the exact supported binary hash, or macOS OpenSSH **9.0+** with `LogVerbose` support.
-- A direct SSH connection using a fixed password. Jump hosts, OTP, and key-passphrase memory are outside this preview's scope.
+- A direct SSH connection using a fixed password. Jump hosts, OTP, and key-passphrase memory are outside this release's password-memory scope.
 
 See [supported builds and fallback behavior](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md). The native bridges are unsigned local builds. This project is independent of Microsoft.
 
@@ -56,7 +63,7 @@ If the old preview has already been removed and Enable reports its helper path a
 ### Install and connect
 
 1. Install [Remote SSH Password Memory](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) from the VS Code Marketplace. In the Extensions view, search for `Devlin.remote-ssh-password-memory` and check the publisher is **Devlin**.
-2. Ensure Microsoft Remote-SSH is installed. Choose the package matching your local VS Code architecture: `win32-x64`, `darwin-arm64` (Apple Silicon), or `darwin-x64` (Intel). For manual installation, download `remote-ssh-password-memory-0.3.2-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
+2. Ensure Microsoft Remote-SSH is installed. Choose the package matching your local VS Code architecture: `win32-x64`, `darwin-arm64` (Apple Silicon), or `darwin-x64` (Intel). For manual installation, download `remote-ssh-password-memory-1.0.0-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
 3. Password memory starts automatically in the local window. No setup command is needed.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
@@ -65,7 +72,7 @@ If the old preview has already been removed and Enable reports its helper path a
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-0.3.2-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-1.0.0-win32-x64.vsix
 ```
 
 Password memory starts automatically after installation and local activation. If you explicitly turn it off, it stays off until you choose to enable it again. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.
@@ -135,9 +142,9 @@ npm run verify:package
 npm run package:all
 ```
 
-The [contributor guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md) covers loopback integration tests, isolated VS Code testing, and packaging. Generated binaries, VSIX files, and local test profiles are excluded from source control. Source and issue links point to the GitHub repository. The extension is published under `Devlin`; the same verified platform packages is also attached to each GitHub Release. Follow the [upload and migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md) when moving from the old `local-tools` preview.
+The [contributor guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md) covers loopback integration tests, isolated VS Code testing, and packaging. Generated binaries, VSIX files, and local test profiles are excluded from source control. Source and issue links point to the GitHub repository. The extension is published under `Devlin`; the same verified platform packages are also attached to each GitHub Release. Follow the [upload and migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md) when moving from the old `local-tools` preview.
 
-For later updates, run `npm run version:patch` and push to main. See the [automatic publishing setup](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#one-time-automatic-publishing-setup) for the required Devlin Trusted Publishing policy and repository switch.
+For later updates, run `npm run version:patch` and use the explicit distribution workflow described in the [release guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#stable-releases). Automatic preview distribution is opt-in; merging a candidate to main does not consume its version.
 
 ## License
 

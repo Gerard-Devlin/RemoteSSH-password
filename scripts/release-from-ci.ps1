@@ -1,10 +1,11 @@
 param(
  [Parameter(Mandatory=$true)][string]$ArtifactDirectory,
  [Parameter(Mandatory=$true)][string]$ExpectedCommit,
- [ValidateSet('win32-x64','darwin-arm64','darwin-x64')][string]$Target='win32-x64'
+ [ValidateSet('win32-x64','darwin-arm64','darwin-x64')][string]$Target='win32-x64',
+ [ValidateSet('preview','stable')][string]$Channel='preview'
 )
 $ErrorActionPreference='Stop'
-if(!$env:GH_TOKEN -or !$env:GITHUB_OUTPUT -or $env:GITHUB_EVENT_NAME -ne 'workflow_run'){throw 'Run this script from the trusted distribution workflow'}
+if(!$env:GH_TOKEN -or !$env:GITHUB_OUTPUT -or $env:GITHUB_EVENT_NAME -notin @('workflow_run','workflow_dispatch')){throw 'Run this script from the trusted distribution workflow'}
 $repository=$env:GITHUB_REPOSITORY
 if($repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'){throw 'Invalid repository'}
 $directory=(Resolve-Path -LiteralPath $ArtifactDirectory).Path
@@ -44,18 +45,27 @@ if($reference){
 }
 $release=GitHub-Json ('repos/'+$repository+'/releases/tags/'+$tag) $true
 if($release -and $release.draft){throw 'This version has a draft Release. Resolve it before automatic distribution.'}
+$prerelease=$Channel -eq 'preview'
+if($release -and [bool]$release.prerelease -ne $prerelease){
+ throw 'The existing Release uses a different channel. Do not promote or demote it automatically; publish a new version.'
+}
 if(!$release){
  $changelog=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../CHANGELOG.md') -Raw
  $section=[regex]::Match($changelog,'(?ms)^## '+[regex]::Escape($verified.version)+'[^\n]*\n(.*?)(?=^## |\z)')
  if(!$section.Success){throw 'The version has no changelog entry'}
  $notes=$section.Groups[1].Value.Trim()+[char]10+[char]10
- $notes+='Publisher: Devlin. Platforms: Windows x64 and macOS (Apple Silicon and Intel). This is a preview package.'+[char]10+[char]10
+ $channelText=if($prerelease){'This is a preview package.'}else{'This is a stable release.'}
+ $notes+='Publisher: Devlin. Platforms: Windows x64 and macOS (Apple Silicon and Intel). '+$channelText+[char]10+[char]10
  $notes+='If moving from the local-tools preview, restore its SSH settings, uninstall it, and reload VS Code before installing this Devlin package. Saved passwords do not automatically migrate. See https://github.com/'+$repository+'/blob/main/docs/marketplace.md for migration and upload instructions.'+[char]10+[char]10
  $notes+='Source commit: '+$ExpectedCommit+[char]10
  if($env:CI_RUN_URL -match '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/\d+$'){$notes+='Verified CI: '+$env:CI_RUN_URL+[char]10}
  $notesFile=Join-Path $env:RUNNER_TEMP ('sshpm-release-'+[guid]::NewGuid().ToString('N')+'.md')
  [IO.File]::WriteAllText($notesFile,$notes,$utf8)
- & gh release create $tag $verified.package (Join-Path $directory ('SHA256SUMS-'+$Target+'.txt')) --repo $repository --target $ExpectedCommit --prerelease --title ($tag+' - Windows and macOS preview') --notes-file $notesFile
+ $title=if($prerelease){$tag+' - Windows and macOS preview'}else{$tag+' - Windows and macOS'}
+ $releaseArgs=@('release','create',$tag,$verified.package,(Join-Path $directory ('SHA256SUMS-'+$Target+'.txt')),
+  '--repo',$repository,'--target',$ExpectedCommit,'--title',$title,'--notes-file',$notesFile)
+ if($prerelease){$releaseArgs+='--prerelease'}
+ & gh @releaseArgs
  if($LASTEXITCODE -ne 0){throw 'Release creation or asset upload failed'}
  $release=GitHub-Json ('repos/'+$repository+'/releases/tags/'+$tag)
 }

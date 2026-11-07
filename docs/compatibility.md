@@ -2,7 +2,7 @@
 
 [Back to README](../README.md)
 
-## Preview baseline
+## Supported baseline
 
 | Component            | Baseline and evidence                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------- |
@@ -35,7 +35,7 @@ macOS uses current-user-only Unix sockets and checks kernel peer UID/PID and exe
 
 ## Why the exact Windows build matters
 
-Unmodified OpenSSH does not expose a public password-authentication success event. This preview uses selected, tested local LogVerbose callsites, a success packet, the active child PID, and host-verification state. It does not treat a zero exit code or arbitrary stderr text as authentication success.
+Unmodified OpenSSH does not expose a public password-authentication success event. This release uses selected, tested local LogVerbose callsites, a success packet, the active child PID, and host-verification state. It does not treat a zero exit code or arbitrary stderr text as authentication success.
 
 Patch-specific source locations can change independently of the displayed version. The Windows TypeScript and Go paths therefore pin the binary hash. System updates may cause the bridge to revert to ordinary authentication until the new build is validated. This is intentional.
 
@@ -49,7 +49,7 @@ Patch-specific source locations can change independently of the displayed versio
 | Explicit `-E` log-file options                                         | Passthrough.                                                                |
 | Key passphrases, OTP, ambiguous or additional interactive prompts      | Manual input only in a managed connection; never remembered.                |
 | Changed verified fingerprint                                           | No automatic saved-password offer. OpenSSH's host-key policy still applies. |
-| Linux, Windows ARM64                                                   | No native package in this preview.                                          |
+| Linux, Windows ARM64                                                   | No native package in this release.                                          |
 | Host certificates, custom authentication modules, unusual target names | Outside the validation claim; persistence may be unavailable.               |
 
 Managed connections suppress pre-authentication server banners to prevent spoofed diagnostic events. Post-login shell output is preserved, subject to the narrow diagnostic-filter limitation described in [SECURITY.md](../SECURITY.md). Use ordinary Remote-SSH if you must read a login banner.

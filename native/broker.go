@@ -224,36 +224,25 @@ func serveWindow(c net.Conn, dir string, u *uiBridge) {
 	}
 }
 
-func chooseWindow(windows []windowInfo, instance string, ancestry map[uint32]int) string {
-	candidates := windows
-	if instance != "" {
-		matching := []windowInfo{}
-		var newest uint64
-		for _, w := range windows {
-			if w.Instance == instance {
-				matching = append(matching, w)
-				if w.Focused >= newest {
-					newest = w.Focused
-				}
-			}
-		}
-		if len(matching) == 1 {
-			return matching[0].Pipe
-		}
-		if len(matching) > 1 {
-			candidates = matching
-			if newest > 0 {
-				for _, w := range matching {
-					if w.Focused == newest {
-						return w.Pipe
-					}
-				}
-			}
+func focusedWindow(windows []windowInfo) string {
+	var newest uint64
+	chosen := ""
+	for _, w := range windows {
+		if w.Focused >= newest {
+			newest = w.Focused
+			chosen = w.Pipe
 		}
 	}
+	if newest == 0 {
+		return ""
+	}
+	return chosen
+}
+
+func ancestryWindow(windows []windowInfo, ancestry map[uint32]int) string {
 	chosen := ""
 	best := 1000
-	for _, w := range candidates {
+	for _, w := range windows {
 		if d, ok := ancestry[w.Parent]; ok && d < best {
 			best = d
 			chosen = w.Pipe
@@ -262,14 +251,68 @@ func chooseWindow(windows []windowInfo, instance string, ancestry map[uint32]int
 	return chosen
 }
 
+func chooseWindow(windows []windowInfo, instance string, ancestry map[uint32]int) string {
+	if instance != "" {
+		matching := []windowInfo{}
+		for _, w := range windows {
+			if w.Instance == instance {
+				matching = append(matching, w)
+			}
+		}
+		if len(matching) == 1 {
+			return matching[0].Pipe
+		}
+		if len(matching) > 1 {
+			if chosen := focusedWindow(matching); chosen != "" {
+				return chosen
+			}
+			return ancestryWindow(matching, ancestry)
+		}
+	}
+	return ancestryWindow(windows, ancestry)
+}
+
+// A stale inherited route may only recover to a new broker in the same VS Code
+// instance. Without an instance identity it stays fail-closed.
+func chooseWindowForInstance(
+	windows []windowInfo,
+	instance string,
+	ancestry map[uint32]int,
+) string {
+	if instance == "" {
+		return ""
+	}
+	matching := []windowInfo{}
+	for _, w := range windows {
+		if w.Instance == instance {
+			matching = append(matching, w)
+		}
+	}
+	if len(matching) == 1 {
+		return matching[0].Pipe
+	}
+	if len(matching) > 1 {
+		if chosen := focusedWindow(matching); chosen != "" {
+			return chosen
+		}
+		return ancestryWindow(matching, ancestry)
+	}
+	return ""
+}
+
 func selectWindow(dir string) (net.Conn, error) {
 	expected := filepath.Join(dir, executableName("broker"))
-	if p := os.Getenv("SSHPM_WINDOW_PIPE"); p != "" {
-		return dialVerified(p, expected, 300*time.Millisecond)
+	explicit := os.Getenv("SSHPM_WINDOW_PIPE")
+	var explicitErr error
+	if explicit != "" {
+		conn, err := dialVerified(explicit, expected, 300*time.Millisecond)
+		if err == nil {
+			return conn, nil
+		}
+		explicitErr = err
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, "windows", "*.json"))
 	windows := []windowInfo{}
-	chosen := ""
 	for _, f := range files {
 		b, e := os.ReadFile(f)
 		if e != nil {
@@ -288,7 +331,16 @@ func selectWindow(dir string) (net.Conn, error) {
 		ancestry[n] = i
 		n = parents[n]
 	}
-	chosen = chooseWindow(windows, windowInstance(), ancestry)
+	instance := windowInstance()
+	chosen := ""
+	if explicit != "" {
+		chosen = chooseWindowForInstance(windows, instance, ancestry)
+		if chosen == "" {
+			return nil, explicitErr
+		}
+	} else {
+		chosen = chooseWindow(windows, instance, ancestry)
+	}
 	if chosen == "" {
 		return nil, net.ErrClosed
 	}

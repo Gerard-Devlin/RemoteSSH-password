@@ -51,6 +51,46 @@ assert.ok(manifest.includes('Version="' + metadata.version + '"'));
 const expectedHelpers = ['ssh', 'scp', 'askpass', 'broker']
   .map((name) => 'extension/bin/' + name + suffix)
   .sort();
+const expectedEntries = [
+  '[Content_Types].xml',
+  'extension.vsixmanifest',
+  'extension/CONTRIBUTING.md',
+  'extension/LICENSE.txt',
+  'extension/SECURITY.md',
+  'extension/TEST-RESULTS.md',
+  'extension/THIRD-PARTY-NOTICES.txt',
+  ...expectedHelpers,
+  'extension/changelog.md',
+  'extension/dist/compatibility.js',
+  'extension/dist/core.js',
+  'extension/dist/extension.js',
+  'extension/dist/hostIdentity.js',
+  'extension/dist/platform.js',
+  'extension/dist/settings.js',
+  'extension/dist/setup.js',
+  'extension/docs/README.zh-CN.md',
+  'extension/docs/architecture.md',
+  'extension/docs/compatibility.md',
+  'extension/docs/marketplace.md',
+  'extension/docs/testing.md',
+  'extension/docs/testing/2026-11-05.md',
+  'extension/docs/testing/2026-11-06.md',
+  'extension/docs/testing/2026-11-07.md',
+  'extension/docs/troubleshooting.md',
+  'extension/docs/ui-text.md',
+  'extension/l10n/bundle.l10n.zh-cn.json',
+  'extension/media/icon.png',
+  'extension/media/readme-logo.png',
+  'extension/package.json',
+  'extension/package.nls.json',
+  'extension/package.nls.zh-cn.json',
+  'extension/readme.md',
+].sort();
+assert.deepEqual(
+  [...entries.keys()].sort(),
+  expectedEntries,
+  'Unexpected or missing VSIX inventory',
+);
 assert.deepEqual(
   [...entries.keys()]
     .filter((name) => name.startsWith('extension/bin/'))

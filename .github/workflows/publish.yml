@@ -5,6 +5,18 @@ on:
     workflows: ['Platform checks']
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_channel:
+        description: Release channel
+        required: true
+        type: choice
+        options: [stable, preview]
+        default: stable
+      source_run_id:
+        description: Successful Platform checks run ID for this commit
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,10 +28,18 @@ concurrency:
 jobs:
   release:
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
+      (
+        github.event_name == 'workflow_run' &&
+        vars.AUTO_PREVIEW_RELEASES_ENABLED == 'true' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      ) ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main'
+      )
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:
@@ -31,25 +51,39 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
+      - name: Verify manually selected Platform checks run
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          if ($env:SOURCE_RUN_ID -notmatch '^\d+$') { throw 'A numeric Platform checks run ID is required' }
+          $run = gh api ('repos/'+$env:GITHUB_REPOSITORY+'/actions/runs/'+$env:SOURCE_RUN_ID) | ConvertFrom-Json
+          if ($run.name -cne 'Platform checks' -or $run.event -cne 'push' -or $run.head_branch -cne 'main' -or $run.status -cne 'completed' -or $run.conclusion -cne 'success' -or $run.head_sha -ine $env:EXPECTED_COMMIT) {
+            throw 'The selected run is not a successful main-branch Platform checks run for this commit'
+          }
       - uses: actions/download-artifact@v7
         with:
           pattern: remote-ssh-password-memory-*
           merge-multiple: true
           path: artifacts
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.source_run_id }}
           github-token: ${{ github.token }}
-      - name: Verify and create an immutable preview Release
+      - name: Verify and create a GitHub Release
         id: release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
-          CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+          RELEASE_CHANNEL: ${{ inputs.release_channel || 'preview' }}
+          CI_RUN_URL: ${{ github.event.workflow_run.html_url || format('https://github.com/{0}/actions/runs/{1}', github.repository, inputs.source_run_id) }}
         run: |
           foreach ($target in @('win32-x64','darwin-arm64','darwin-x64')) {
-            ./scripts/release-from-ci.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT -Target $target
+            ./scripts/release-from-ci.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT -Target $target -Channel $env:RELEASE_CHANNEL
           }
       - uses: actions/upload-artifact@v7
         if: steps.release.outputs.publishable == 'true'
@@ -77,7 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
@@ -91,7 +125,7 @@ jobs:
       - name: Publish the verified package with OIDC
         shell: pwsh
         env:
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           foreach ($target in @('win32-x64','darwin-arm64','darwin-x64')) {
             $artifact = ./scripts/verify-ci-artifact.ps1 -ArtifactDirectory artifacts -ExpectedCommit $env:RELEASE_COMMIT -Target $target | ConvertFrom-Json

@@ -277,6 +277,25 @@ try {
       b2.p.stdin.end();
     },
   );
+  await check(
+    'stale inherited route recovers within the same VS Code instance',
+    async () => {
+      const instance = '4343434343',
+        b2 = await broker({ VSCODE_PID: instance }),
+        n = prompts,
+        r = await run(
+          path.join(dir, 'ssh' + suffix),
+          [...base(s.port), 'fixture'],
+          '\\\\.\\pipe\\sshpm-stale-' + randomUUID(),
+          '',
+          { VSCODE_PID: instance },
+        );
+      assert.equal(r.code, 0);
+      assert.equal(prompts, n);
+      assert.ok(b2.messages.some((m) => m.kind === 'password'));
+      b2.p.stdin.end();
+    },
+  );
   await check('exit code and standard input preserved', async () => {
     assert.equal((await ssh(s, b, ['exit-7'])).code, 7);
     const r = await ssh(s, b, ['echo-stdin'], 'echo test 中文\n');
@@ -630,14 +649,16 @@ try {
     },
   );
   await check(
-    'unknown window route does not borrow another window',
+    'unknown route fails closed without a VS Code instance identity',
     async () => {
-      const b2 = await broker(),
+      const b2 = await broker({ VSCODE_PID: '' }),
         n = prompts;
       const r = await run(
         path.join(dir, 'ssh' + suffix),
         [...base(s.port, ['-o', 'BatchMode=yes']), 'fixture'],
         '\\\\.\\pipe\\sshpm-absent-' + randomUUID(),
+        '',
+        { VSCODE_PID: '' },
       );
       assert.notEqual(r.code, 0);
       assert.equal(prompts, n);
