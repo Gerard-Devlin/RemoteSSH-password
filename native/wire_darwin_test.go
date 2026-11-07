@@ -57,10 +57,10 @@ func TestDarwinSocketIdentityAndLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.Write([]byte{0})
-	c.Close()
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
+	c.Close()
 	go func() {
 		c, err := l.Accept()
 		if err == nil {
