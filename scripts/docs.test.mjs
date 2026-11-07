@@ -212,6 +212,10 @@ test('stable distribution is explicit and automatic distribution stays preview-o
       "$env:GITHUB_EVENT_NAME -notin @('workflow_run','workflow_dispatch')",
     ),
   );
+  assert.ok(release.includes('$releaseAssets+=$packagePath'));
+  assert.ok(
+    release.includes('if($releaseAssets.Count -ne ($allTargets.Count * 2))'),
+  );
   assert.ok(release.includes("if($prerelease){$releaseArgs+='--prerelease'}"));
   assert.ok(!/gh\s+release\s+create[^]*--prerelease/.test(release));
 });
