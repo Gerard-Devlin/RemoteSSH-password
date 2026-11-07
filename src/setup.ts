@@ -114,6 +114,21 @@ export class SetupManager {
       return [];
     }
   }
+  private generationDirectory(executable?: string): string | undefined {
+    if (!executable) return;
+    const paths = this.platform === 'win32' ? path.win32 : path.posix;
+    const root = paths.join(this.options.storage, 'bridge-v2');
+    if (!paths.isAbsolute(executable)) return;
+    const directory = paths.dirname(executable);
+    const relative = paths.relative(root, directory);
+    if (
+      relative &&
+      !relative.startsWith('..') &&
+      !paths.isAbsolute(relative) &&
+      !relative.includes(paths.sep)
+    )
+      return directory;
+  }
   private async secure(directory: string) {
     if (this.options.secureDirectory)
       return this.options.secureDirectory(directory);
@@ -288,6 +303,8 @@ export class SetupManager {
         legacy,
         ...(await this.generationDirectories()),
       ];
+      const currentGeneration = this.generationDirectory(current.path);
+      if (currentGeneration) directories.push(currentGeneration);
       if (state?.managedPath) directories.push(path.dirname(state.managedPath));
       if (
         this.options.legacyOwned?.bridgePath &&
