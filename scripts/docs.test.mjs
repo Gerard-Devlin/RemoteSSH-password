@@ -181,6 +181,11 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
         'flat-square',
       'Shields badge must use flat-square: ' + source[1],
     );
+  assert.ok(
+    content.includes(
+      'github/stars/Gerard-Devlin/RemoteSSH-password?style=flat-square&amp;color=yellow',
+    ),
+  );
 });
 
 test('stable distribution is explicit and automatic distribution stays preview-only', async () => {
