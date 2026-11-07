@@ -12,6 +12,7 @@ $directory=(Resolve-Path -LiteralPath $ArtifactDirectory).Path
 $verified=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $directory -ExpectedCommit $ExpectedCommit -Target $Target | ConvertFrom-Json
 $tag='v'+$verified.version
 $utf8=[Text.UTF8Encoding]::new($false)
+$allTargets=@('win32-x64','darwin-arm64','darwin-x64')
 function Set-Output([string]$name,[string]$value){
  [IO.File]::AppendAllText($env:GITHUB_OUTPUT,$name+'='+$value+[char]10,$utf8)
 }
@@ -62,8 +63,23 @@ if(!$release){
  $notesFile=Join-Path $env:RUNNER_TEMP ('sshpm-release-'+[guid]::NewGuid().ToString('N')+'.md')
  [IO.File]::WriteAllText($notesFile,$notes,$utf8)
  $title=if($prerelease){$tag+' - Windows and macOS preview'}else{$tag+' - Windows and macOS'}
- $releaseArgs=@('release','create',$tag,$verified.package,(Join-Path $directory ('SHA256SUMS-'+$Target+'.txt')),
-  '--repo',$repository,'--target',$ExpectedCommit,'--title',$title,'--notes-file',$notesFile)
+ # Immutable Releases lock every asset immediately after creation. Verify and
+ # attach the complete cross-platform set in the first API call.
+ $releaseAssets=@()
+ foreach($assetTarget in $allTargets){
+  $asset=& (Join-Path $PSScriptRoot 'verify-ci-artifact.ps1') -ArtifactDirectory $directory -ExpectedCommit $ExpectedCommit -Target $assetTarget | ConvertFrom-Json
+  $packagePath=Join-Path $directory $asset.filename
+  $checksumPath=Join-Path $directory ('SHA256SUMS-'+$assetTarget+'.txt')
+  if(!(Test-Path -LiteralPath $packagePath -PathType Leaf) -or !(Test-Path -LiteralPath $checksumPath -PathType Leaf)){throw ('Missing verified release artifact for '+$assetTarget)}
+  $expectedChecksum=$asset.sha256+'  '+$asset.filename
+  if((Get-Content -LiteralPath $checksumPath -Raw).Trim() -cne $expectedChecksum){throw ('Checksum receipt mismatch for '+$assetTarget)}
+  $releaseAssets+=$packagePath
+  $releaseAssets+=$checksumPath
+ }
+ if($releaseAssets.Count -ne ($allTargets.Count * 2)){throw 'Incomplete cross-platform Release asset set'}
+ $releaseArgs=@('release','create',$tag)
+ $releaseArgs+=$releaseAssets
+ $releaseArgs+=@('--repo',$repository,'--target',$ExpectedCommit,'--title',$title,'--notes-file',$notesFile)
  if($prerelease){$releaseArgs+='--prerelease'}
  & gh @releaseArgs
  if($LASTEXITCODE -ne 0){throw 'Release creation or asset upload failed'}
