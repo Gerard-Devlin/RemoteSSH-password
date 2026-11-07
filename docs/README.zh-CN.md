@@ -49,4 +49,4 @@ Publisher 现为 `Devlin`。若已安装 `local-tools` 预览版，请先在旧�
 
 ## 自动更新到商店
 
-配置一次 Devlin 的 Trusted Publishing 后，可在本地运行 `npm run version:patch`，提交并推送到 main。主分支自动发布仍只生成预览版；正式版必须在 “Release and Marketplace” 工作流中手动选择 `stable` 和对应的成功 Platform checks run。启用仓库变量 MARKETPLACE_PUBLISH_ENABLED 后，会使用 OIDC 发布到应用商店。无需提供 PAT，详细步骤见[发布指南](marketplace.md#stable-releases)。
+配置一次 Devlin 的 Trusted Publishing 后，可在本地运行 `npm run version:patch` 并合并到 main。自动预览发布是显式可选项，合并候选版不会消耗正式版本号；正式版必须在 “Release and Marketplace” 工作流中手动选择 `stable` 和对应的成功 Platform checks run。启用仓库变量 MARKETPLACE_PUBLISH_ENABLED 后，会使用 OIDC 发布到应用商店。无需提供 PAT，详细步骤见[发布指南](marketplace.md#stable-releases)。

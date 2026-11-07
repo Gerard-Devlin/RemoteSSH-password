@@ -141,7 +141,7 @@ npm run package:all
 
 The [contributor guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md) covers loopback integration tests, isolated VS Code testing, and packaging. Generated binaries, VSIX files, and local test profiles are excluded from source control. Source and issue links point to the GitHub repository. The extension is published under `Devlin`; the same verified platform packages are also attached to each GitHub Release. Follow the [upload and migration guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md) when moving from the old `local-tools` preview.
 
-For later updates, run `npm run version:patch` and push to main for a preview release. Stable releases require the explicit manual distribution flow described in the [release guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#stable-releases).
+For later updates, run `npm run version:patch` and use the explicit distribution workflow described in the [release guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/marketplace.md#stable-releases). Automatic preview distribution is opt-in; merging a candidate to main does not consume its version.
 
 ## License
 

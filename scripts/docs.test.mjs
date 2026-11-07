@@ -188,6 +188,7 @@ test('stable distribution is explicit and automatic distribution stays preview-o
   assert.ok(workflow.includes('workflow_dispatch:'));
   assert.ok(workflow.includes('options: [stable, preview]'));
   assert.ok(workflow.includes('source_run_id'));
+  assert.ok(workflow.includes("vars.AUTO_PREVIEW_RELEASES_ENABLED == 'true'"));
   assert.ok(workflow.includes("inputs.release_channel || 'preview'"));
   assert.ok(workflow.includes('-Channel $env:RELEASE_CHANNEL'));
   const release = await read('scripts/release-from-ci.ps1');

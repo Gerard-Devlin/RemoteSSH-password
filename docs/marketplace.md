@@ -92,7 +92,7 @@ git push origin main
 
 The version command updates package.json, package-lock.json, both README version references, and the changelog. Use `version:minor`, `version:major`, or add `-- --dry-run` to preview changes.
 
-A successful trusted main-branch push runs Platform checks, verifies the VSIX, and creates a non-overwriting GitHub preview Release with the installer and SHA256SUMS-<target>.txt. When the Marketplace switch is enabled, it publishes the same canonical packages to publisher Devlin. Pull requests and other branches do not distribute packages.
+A successful trusted main-branch push runs Platform checks. It does not distribute packages by default. Setting the repository variable `AUTO_PREVIEW_RELEASES_ENABLED=true` opts into non-overwriting GitHub preview Releases for those pushes. When the Marketplace switch is enabled, an explicitly invoked preview or stable workflow publishes the same canonical packages to publisher Devlin. Pull requests and other branches do not distribute packages.
 
 Existing tags and published assets are not overwritten. If a version already belongs to another commit, distribution is skipped with a reminder to increment the version. Rerunning the same commit reuses and verifies the existing release package. Existing Marketplace versions are skipped rather than replaced.
 
@@ -100,7 +100,7 @@ Check both Platform checks and Release and Marketplace in GitHub Actions. A skip
 
 ## Stable releases
 
-Automatic `workflow_run` distribution is always a preview. A stable release is explicit:
+Automatic `workflow_run` distribution is optional and preview-only; it requires `AUTO_PREVIEW_RELEASES_ENABLED=true`. A stable release is explicit:
 
 1. Merge the approved version and metadata changes to `main`.
 2. Wait for the Platform checks run for that exact commit to complete successfully.

@@ -50,7 +50,7 @@ This checks automatic setup, commands, real encrypted interactive-password persi
 
 The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, loopback and bilingual extension-entry integration when the platform OpenSSH meets the contract, exact-inventory package verification, native architecture checks, and distribution receipts. A runner that cannot exercise a supported OpenSSH build says **not run** explicitly; it cannot silently become a successful integration claim.
 
-CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow consumes only successful main-branch push checks, verifies their package receipt, and creates non-overwriting GitHub Release assets. Automatic main-branch distribution is preview-only; a stable release requires the explicit manual workflow in the [publishing guide](marketplace.md#stable-releases).
+CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow verifies package receipts before creating non-overwriting GitHub Release assets. Automatic main-branch previews are opt-in, while a stable release always requires the explicit manual workflow in the [publishing guide](marketplace.md#stable-releases). Merging a candidate without invoking distribution does not consume its version.
 
 ## Manual acceptance
 

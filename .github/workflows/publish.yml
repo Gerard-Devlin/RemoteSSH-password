@@ -30,6 +30,7 @@ jobs:
     if: >-
       (
         github.event_name == 'workflow_run' &&
+        vars.AUTO_PREVIEW_RELEASES_ENABLED == 'true' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.head_branch == 'main' &&
