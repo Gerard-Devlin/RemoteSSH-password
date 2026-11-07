@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Gerard-Devlin/RemoteSSH-password/ci.yml?branch=main&amp;style=flat-square&amp;label=CI" alt="CI status"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version 1.0.0"></a>
-  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=flat-square&amp;color=yellow" alt="GitHub stars"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=social" alt="GitHub stars"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="MIT license"></a>
 </p>
 

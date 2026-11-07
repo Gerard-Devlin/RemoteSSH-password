@@ -175,15 +175,20 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
     assert.ok(link.startsWith('https://') || link.startsWith('#'), link);
   for (const source of [
     ...content.matchAll(/<img\s+src="(https:\/\/img\.shields\.io\/[^"]+)"/g),
-  ])
-    assert.ok(
-      new URL(source[1].replaceAll('&amp;', '&')).searchParams.get('style') ===
-        'flat-square',
-      'Shields badge must use flat-square: ' + source[1],
+  ]) {
+    const url = new URL(source[1].replaceAll('&amp;', '&'));
+    const expectedStyle = url.pathname.includes('/github/stars/')
+      ? 'social'
+      : 'flat-square';
+    assert.equal(
+      url.searchParams.get('style'),
+      expectedStyle,
+      'Unexpected Shields style: ' + source[1],
     );
+  }
   assert.ok(
     content.includes(
-      'github/stars/Gerard-Devlin/RemoteSSH-password?style=flat-square&amp;color=yellow',
+      'github/stars/Gerard-Devlin/RemoteSSH-password?style=social',
     ),
   );
   for (const asset of [
