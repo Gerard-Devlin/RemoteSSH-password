@@ -104,6 +104,16 @@ export class SetupManager {
       throw new SetupError('invalid-state');
     return c;
   }
+  private async generationDirectories(): Promise<string[]> {
+    const root = path.join(this.options.storage, 'bridge-v2');
+    try {
+      return (await fs.readdir(root, { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => path.join(root, entry.name));
+    } catch {
+      return [];
+    }
+  }
   private async secure(directory: string) {
     if (this.options.secureDirectory)
       return this.options.secureDirectory(directory);
@@ -276,6 +286,7 @@ export class SetupManager {
       const directories = [
         path.join(this.options.storage, 'bridge-v1'),
         legacy,
+        ...(await this.generationDirectories()),
       ];
       if (state?.managedPath) directories.push(path.dirname(state.managedPath));
       if (

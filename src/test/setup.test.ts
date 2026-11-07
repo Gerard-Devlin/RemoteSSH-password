@@ -167,6 +167,38 @@ test('helper upgrades preserve original settings and retain the previous generat
   await upgraded.disable();
   assert.deepEqual(h.settings, h.original);
 });
+test('stale bridge-v2 generations are never treated as the real SSH program', async () => {
+  for (const platform of ['win32', 'darwin'] as const) {
+    const h = await fixture(platform),
+      suffix = platform === 'win32' ? '.exe' : '';
+    const stale = path.join(h.storage, 'bridge-v2', '0.2.0-stale');
+    await fs.mkdir(stale, { recursive: true });
+    const staleSSH = path.join(stale, 'ssh' + suffix);
+    await fs.writeFile(staleSSH, Buffer.from('fixture-native-ssh'));
+    await fs.writeFile(
+      path.join(stale, 'bridge.json'),
+      JSON.stringify({
+        realSSH: h.original.path,
+        realSCP: path.join(path.dirname(h.original.path!), 'scp' + suffix),
+        realSSHHash: 'a'.repeat(64),
+        enabled: true,
+      }),
+    );
+    h.settings = { path: staleSSH, useLocalServer: true };
+    assert.equal(await h.manager().ensure(), 'ready');
+    const deployed = JSON.parse(
+      await fs.readFile(
+        path.join(path.dirname(h.settings.path!), 'bridge.json'),
+        'utf8',
+      ),
+    );
+    assert.equal(deployed.realSSH, h.original.path);
+    assert.notEqual(
+      path.dirname(path.dirname(deployed.realSSH)),
+      path.dirname(path.dirname(staleSSH)),
+    );
+  }
+});
 test('failed broker startup leaves settings intact and can retry', async () => {
   const h = await fixture();
   h.fail = true;

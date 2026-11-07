@@ -24,6 +24,12 @@ Install the current release and reload the local window. Setup and known stale-p
 
 Install the new VSIX and reload the local VS Code window. The extension automatically selects a complete new helper generation during upgrades. Saved passwords are retained. A deliberately disabled installation remains off.
 
+## Reconnects fail after the first successful connection
+
+Version 0.3.0 could mistake an older `bridge-v2` generation for the real OpenSSH program during a helper upgrade. That created a wrapper chain; a later password prompt could exit after several keyboard-interactive attempts. Version 0.3.1 recognizes all managed generations during setup and resolves any legacy chain at runtime. Install the new package for your platform, fully exit VS Code, reopen it, and reconnect.
+
+If the problem continues, run **SSH Password Memory: Show Diagnostics**. The local helper folder should change after activation, and the service should report running. The bridge's `bridge.json` `realSSH` value must name a real OpenSSH executable, not another `bridge-v2` wrapper.
+
 ## Start with diagnostics
 
 Run **SSH Password Memory: Show Diagnostics** from a local window. Inspect the platform, enabled state, bridge path, and broker status. The bridge directory’s password-free `bridge.json` records the real SSH path and its expected hash. Diagnostics contain metadata, not passwords. Review hostnames, usernames, and local paths before sharing them.

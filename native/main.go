@@ -30,6 +30,61 @@ func loadConfig(dir string) (Config, error) {
 	e = json.Unmarshal(b, &c)
 	return c, e
 }
+func defaultConfig() Config {
+	ssh := defaultSSH()
+	return Config{
+		RealSSH: ssh,
+		RealSCP: filepath.Join(filepath.Dir(ssh), executableName("scp")),
+	}
+}
+func helperManifest(exe string) (Config, bool) {
+	if !filepath.IsAbs(exe) {
+		return Config{}, false
+	}
+	info, e := os.Stat(exe)
+	if e != nil || info.IsDir() {
+		return Config{}, false
+	}
+	if _, e = os.Stat(filepath.Join(filepath.Dir(exe), "bridge.json")); e != nil {
+		return Config{}, false
+	}
+	c, e := loadConfig(filepath.Dir(exe))
+	return c, e == nil
+}
+func bridgeManifest(exe string) (Config, bool) {
+	if filepath.Base(exe) != executableName("ssh") {
+		return Config{}, false
+	}
+	return helperManifest(exe)
+}
+
+// Older generations can accidentally point at another bridge generation.
+// Resolve that chain without executing nested wrappers.
+func resolveRealPrograms(c Config) Config {
+	seen := map[string]bool{}
+	for i := 0; i < 8; i++ {
+		nested, managed := bridgeManifest(c.RealSSH)
+		if !managed {
+			if i > 0 && !filepath.IsAbs(c.RealSCP) {
+				return defaultConfig()
+			}
+			if _, managedSCP := helperManifest(c.RealSCP); managedSCP {
+				return defaultConfig()
+			}
+			return c
+		}
+		key := filepath.Clean(filepath.Dir(c.RealSSH))
+		if seen[key] || !filepath.IsAbs(nested.RealSSH) {
+			return defaultConfig()
+		}
+		seen[key] = true
+		c.RealSSH = nested.RealSSH
+		c.RealSCP = nested.RealSCP
+		c.RealSSHHash = nested.RealSSHHash
+		c.Enabled = c.Enabled && nested.Enabled
+	}
+	return defaultConfig()
+}
 func exitCode(e error) int {
 	if e == nil {
 		return 0
@@ -68,9 +123,9 @@ func main() {
 	}
 	c, e := loadConfig(dir)
 	if e != nil {
-		c.RealSSH = defaultSSH()
-		c.RealSCP = filepath.Join(filepath.Dir(c.RealSSH), executableName("scp"))
+		c = defaultConfig()
 	}
+	c = resolveRealPrograms(c)
 	if !filepath.IsAbs(c.RealSSH) || samePath(c.RealSSH, exe) || samePath(filepath.Dir(c.RealSSH), dir) {
 		safeError("invalid-ssh-path")
 		os.Exit(255)

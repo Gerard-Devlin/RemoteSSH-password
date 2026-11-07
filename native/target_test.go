@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -75,6 +77,56 @@ func TestEnvironmentReplacement(t *testing.T) {
 	a := childEnv([]string{"ssh_askpass=old", "OTHER=x"}, map[string]string{"SSH_ASKPASS": "new"})
 	if len(a) != 2 || !strings.Contains(strings.Join(a, ";"), "SSH_ASKPASS=new") {
 		t.Fatal(a)
+	}
+}
+func TestResolveNestedBridgePrograms(t *testing.T) {
+	root := t.TempDir()
+	realSSH := filepath.Join(root, "real", executableName("ssh"))
+	realSCP := filepath.Join(root, "real", executableName("scp"))
+	if err := os.MkdirAll(filepath.Dir(realSSH), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(realSSH, []byte("real ssh"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	old := filepath.Join(root, "bridge-v2", "old")
+	cur := filepath.Join(root, "bridge-v2", "current")
+	for _, dir := range []string{old, cur} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, executableName("ssh")), []byte("wrapper"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hash := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	writeConfig := func(dir, next, scp string) {
+		t.Helper()
+		b, _ := json.Marshal(Config{RealSSH: next, RealSCP: scp, RealSSHHash: hash, Enabled: true})
+		if err := os.WriteFile(filepath.Join(dir, "bridge.json"), b, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeConfig(old, realSSH, realSCP)
+	writeConfig(cur, filepath.Join(old, executableName("ssh")), filepath.Join(old, executableName("scp")))
+	got := resolveRealPrograms(Config{
+		RealSSH:     filepath.Join(cur, executableName("ssh")),
+		RealSCP:     filepath.Join(cur, executableName("scp")),
+		RealSSHHash: "wrong",
+		Enabled:     true,
+	})
+	if got.RealSSH != realSSH || got.RealSCP != realSCP || got.RealSSHHash != hash || !got.Enabled {
+		t.Fatalf("nested bridge not resolved: %+v", got)
+	}
+	writeConfig(old, filepath.Join(cur, executableName("ssh")), filepath.Join(cur, executableName("scp")))
+	loop := Config{
+		RealSSH:     filepath.Join(cur, executableName("ssh")),
+		RealSCP:     filepath.Join(cur, executableName("scp")),
+		RealSSHHash: hash,
+		Enabled:     true,
+	}
+	if got := resolveRealPrograms(loop); got.Enabled || got.RealSSH != defaultSSH() {
+		t.Fatalf("bridge loop did not fall back safely: %+v", got)
 	}
 }
 func TestPipeName(t *testing.T) {

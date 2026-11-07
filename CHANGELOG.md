@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-11-07
+
+- Fix reconnects after helper upgrades on Windows and macOS. Setup now recognizes every existing `bridge-v2` generation so it never adopts an older extension wrapper as the real OpenSSH program; the native bridge also resolves legacy wrapper chains at runtime and falls back to ordinary OpenSSH if a loop is detected.
+- Add regression coverage for stale generation chains on Windows and macOS. The failure appeared as repeated keyboard-interactive requests followed by a disconnect on the second or later connection.
+
 ## 0.3.0 — 2026-11-07
 
 - Add macOS Apple Silicon and Intel native helpers, protected Unix sockets, kernel peer/process identity checks, and a private diagnostic FIFO separate from server output.
@@ -47,7 +52,7 @@
 - Set the registered publisher to Devlin, producing extension identity Devlin.remote-ssh-password-memory.
 - Prepare the standard Windows x64 VSIX for manual Marketplace upload with absolute HTTPS README links/images and normal vsce link processing.
 - Verify the packaged publisher, version, extension identity, platform, and exact production inventory. Update the isolated host fixture to discover the manifest identity.
-- Add trusted-main CI distribution: immutable GitHub Releases, verified canonical VSIX artifacts, and opt-in Marketplace OIDC publishing. Add version update commands for future main-branch releases.
+- Add trusted-main CI distribution: immutable GitHub Releases, verified canonical VSIX assets, and opt-in Marketplace OIDC publishing. Add version update commands for future main-branch releases.
 - Document migration from local-tools: restore settings, uninstall/reload the old extension, install the new one, and enter passwords again.
 
 ## 0.1.4 — 2026-11-06
