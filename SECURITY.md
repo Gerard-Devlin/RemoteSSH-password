@@ -1,6 +1,6 @@
 # Security model
 
-This is an experimental local companion, not an authentication provider or a replacement for OpenSSH. Password-based authentication remains less desirable than SSH keys or a managed authentication agent where those options are available.
+This is a local companion, not an authentication provider or a replacement for OpenSSH. Password-based authentication remains less desirable than SSH keys or a managed authentication agent where those options are available.
 
 ## Secret handling
 
@@ -14,7 +14,7 @@ JavaScript strings and Go-managed memory cannot guarantee immediate zeroization.
 
 Windows production communication uses named pipes; macOS uses protected Unix sockets; there is no listening TCP service. Pipe DACLs allow the current SID, remote clients are rejected by go-winio, and pipe endpoints validate their peer PID and executable image path. ASKPASS clients must descend from the active real SSH child. The broker creates the session identifier and fixes the resolved target at session creation. The extension never services arbitrary target lookups without a session opened by the bridge.
 
-The Windows bridge directory has a protected inheritable DACL for the current user. On macOS, directories use mode 0700, sockets/FIFOs mode 0600, peer UID/PID comes from LOCAL_PEERCRED/LOCAL_PEERPID, and libproc supplies the kernel executable path. Socket locks prevent concurrent listeners from deleting live endpoints. Executable-path validation is not code signing and is not a defense against same-account code substitution. An explicit but stale window route fails rather than choosing a different window. The ancestry fallback accepts only a broker whose extension-host parent is an ancestor of the calling bridge; it does not route through a common Explorer/shell ancestor.
+The Windows bridge directory has a protected inheritable DACL for the current user. On macOS, directories use mode 0700, sockets/FIFOs mode 0600, peer UID/PID comes from LOCAL_PEERCRED/LOCAL_PEERPID, and libproc supplies the kernel executable path. Socket locks prevent concurrent listeners from deleting live endpoints. Executable-path validation is not code signing and is not a defense against same-account code substitution. An explicit but stale window route may recover only to a new broker carrying the same VS Code instance identity; an unknown or cross-instance route fails instead of borrowing another window. The legacy ancestry fallback accepts only a broker whose extension-host parent is an ancestor of the calling bridge; it does not route through a common Explorer/shell ancestor.
 
 Across windows, a user-restricted coordinator deduplicates only in-flight requests for the same effective target, fingerprint, authentication kind and rejection state. It retains no credential cache. Each participating connection must independently report successful authentication before its extension host may save an input authorized for persistence.
 
@@ -40,12 +40,12 @@ Installation/activation automatically sets up the two Remote-SSH user settings a
 
 ## Release hygiene
 
-The VSIX must contain only production compiled JS, ssh/scp/askpass/broker helpers (with .exe on Windows) and documentation/licenses. Do not package the test server, test profiles, runtime fixtures, source maps, npm dependencies or credentials. All four executables are the same basename-dispatched Go binary. They are locally built and unsigned; no Microsoft signature is implied. Native dependencies are covered by THIRD-PARTY-NOTICES.txt.
+The VSIX must contain only production compiled JS, ssh/scp/askpass/broker helpers (with .exe on Windows) and documentation/licenses. Package verification uses an exact inventory allowlist, not a denylist. Do not package the test server, test profiles, runtime fixtures, source maps, npm dependencies, environment files, logs or credentials. All four executables are the same basename-dispatched Go binary. They are locally built and unsigned; no Microsoft signature is implied. Native dependencies are covered by THIRD-PARTY-NOTICES.txt.
 
-No production credentials were requested or used to develop this version. Reports should contain sanitized diagnostics only; never include passwords or raw IPC dumps. Before production use, complete the [manual acceptance checklist](docs/testing.md#manual-acceptance).
+No production credential value was read or recorded during validation. Real-host acceptance exercised existing saved credentials through the normal masked-input and SecretStorage path. Reports must contain sanitized diagnostics only; never include passwords or raw IPC dumps. Release evidence and remaining limitations are recorded in the [candidate report](docs/testing/2026-11-07.md#100-release-candidate).
 
 ## Reporting a vulnerability
 
-Do not include secrets or raw authentication traffic in a public issue. If the repository has private vulnerability reporting enabled, use its Security tab to submit a private advisory. Otherwise ask the maintainer for a private reporting channel without posting exploit details or credentials. This preview has no separate security contact or response-time guarantee.
+Do not include secrets or raw authentication traffic in a public issue. Use the repository Security tab to submit a private vulnerability report without posting exploit details or credentials. This project has no separate response-time guarantee.
 
-Review scope and incomplete real-host validation in the [latest local report](docs/testing/2026-11-07.md).
+Review validation scope and supported-build limits in the [latest local report](docs/testing/2026-11-07.md).

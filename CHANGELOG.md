@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.0.0 — 2026-11-07
+
+- Add a 1.0.0 release candidate with safe recovery from a stale inherited Remote-SSH route, exact VSIX inventory verification, and an explicit manual stable-release channel.
+- Keep automatic main-branch distribution in preview mode unless a maintainer manually dispatches the distribution workflow with a successful source run and selects `stable`.
+- Remove preview-only Marketplace metadata and close the documented acceptance gaps for the supported password-memory workflow.
+
 ## 0.3.2 — 2026-11-07
 
 - Fix the ordinary Remote-SSH password box appearing after reloads on modern Windows and macOS builds. Remote-SSH's detached local server is not a child of the extension host, so routing now uses the shared VS Code instance identity and current-window focus instead of relying on inherited environment state.

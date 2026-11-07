@@ -44,6 +44,19 @@ jobs:
             native/go.sum
             native/testserver/go.sum
       - run: npm ci
+      - name: Validate PowerShell release tooling
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($file in @('./scripts/release-from-ci.ps1','./scripts/verify-ci-artifact.ps1','./scripts/verify-package.ps1')) {
+            $tokens=$null
+            $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              throw ('PowerShell parse failed: '+$file)
+            }
+          }
       - name: Formatting, compile, unit, localization, and documentation checks
         run: npm run check
       - name: Native static analysis

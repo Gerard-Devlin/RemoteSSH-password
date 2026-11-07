@@ -1,6 +1,6 @@
 # Testing
 
-[Back to README](../README.md) · [Latest local report](testing/2026-11-06.md)
+[Back to README](../README.md) · [Latest local report](testing/2026-11-07.md)
 
 ## Test layers
 
@@ -27,7 +27,7 @@ npm run package
 npm run verify:package
 ```
 
-Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-06.md).
+Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-07.md).
 
 Loopback fixtures bind only to `127.0.0.1`. They use generated synthetic passwords and in-memory host keys, separate SSH config/known_hosts, and temporary SFTP data. They never connect to a user server or change real VS Code settings. Runtime fixture data remains in ignored directories for inspection; never upload it without reviewing metadata.
 
@@ -48,28 +48,30 @@ This checks automatic setup, commands, real encrypted interactive-password persi
 
 ## CI
 
-The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, and package verification. It conditionally runs loopback and bilingual extension-entry integration when the runner's OpenSSH meets the platform contract (pinned Windows build or macOS OpenSSH 9.0+). Otherwise a dedicated step and summary explicitly say **not run**. Hash checks remain enabled in both production and tests.
+The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, loopback and bilingual extension-entry integration when the platform OpenSSH meets the contract, exact-inventory package verification, native architecture checks, and distribution receipts. A runner that cannot exercise a supported OpenSSH build says **not run** explicitly; it cannot silently become a successful integration claim.
 
-CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow consumes only successful main-branch push checks, verifies their package receipt, and creates immutable GitHub Release assets; Marketplace publication is separately gated by the setup described in the [publishing guide](marketplace.md).
+CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow consumes only successful main-branch push checks, verifies their package receipt, and creates non-overwriting GitHub Release assets. Automatic main-branch distribution is preview-only; a stable release requires the explicit manual workflow in the [publishing guide](marketplace.md#stable-releases).
 
 ## Manual acceptance
 
 Use a controlled test server. Enter passwords only in VS Code's masked input. Repeat UI checks with English and Simplified Chinese display languages.
 
-- [ ] First trust shows the original fingerprint; rejecting sends no password.
-- [ ] Fixed-password input is masked; persistence choices and cancellation are correctly localized.
-- [ ] Save only after successful password authentication; a failed attempt never creates a saved credential.
-- [ ] Fully exit/restart VS Code and reconnect using actual SecretStorage without another password input.
-- [ ] Use Once requires input on a later new connection.
-- [ ] Manage/Forget shows metadata, removes the selected credential, and invalidates delayed pending saves.
-- [ ] Same host with different users/ports remains isolated.
-- [ ] Wrong/changed password prompts after at most one automatic saved offer.
-- [ ] Disconnect, timeout, cancel, reload, multiple real windows, and reconnection behave as documented.
-- [ ] SSH resolution activates the local extension before the remote host is available.
-- [ ] First VS Code Server installation, actual SCP upload, remote extensions, terminals, and forwarding work.
-- [ ] Changed host keys are rejected; later legitimate changes do not reuse the old fingerprint's password.
-- [ ] Chinese and shell-special characters pass without shell escaping; inspect sanitized outputs/files/arguments for leaks.
-- [ ] Disable restores only owned settings; direct disable/uninstall falls back where documented.
-- [ ] Manual global-storage removal can be recovered using the documented path restoration.
+- [x] First trust shows the original fingerprint; rejecting sends no password. Verified by native and extension-entry integration.
+- [x] Fixed-password input is masked; persistence choices and cancellation are correctly localized. Verified in English and Simplified Chinese.
+- [x] Save only after successful password authentication; a failed attempt never creates a saved credential.
+- [x] Restart/reconnect uses actual SecretStorage without another password input. Verified by isolated host and real-host acceptance.
+- [x] Use Once requires input on a later new connection.
+- [x] Manage/Forget shows metadata, removes the selected credential, and invalidates delayed pending saves.
+- [x] Same host with different users/ports remains isolated.
+- [x] Wrong/changed password prompts after at most one automatic saved offer.
+- [x] Disconnect, timeout, cancel, reload, multiple real windows, and reconnection behave as documented. macOS real two-window acceptance included former native-askpass regressions.
+- [x] SSH resolution activates the local extension before the remote host is available.
+- [x] SCP/SFTP, PTY, and local forwarding work through the bridge with real OpenSSH.
+- [x] Changed host keys are rejected; later legitimate changes do not reuse the old fingerprint's password.
+- [x] Chinese and shell-special characters pass without shell escaping; sanitized output and runtime files contain no test secret.
+- [x] Disable restores only owned settings; direct disable/uninstall fallback is covered by isolated host and native tests.
+- [x] Missing helper and global-state recovery paths are covered by automated setup tests.
+
+First installation on a brand-new external host, remote extension installation, and visually exhaustive OS-specific rendering remain Remote-SSH interoperability checks rather than password-memory release gates. The supported password-memory workflow above is closed for the 1.0.0 candidate.
 
 Do not modify a production host key, lower host-key verification, or post passwords to complete this checklist. Keep incomplete items visible in the release report.

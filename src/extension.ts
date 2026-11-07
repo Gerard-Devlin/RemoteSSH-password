@@ -484,6 +484,7 @@ class Runtime implements vscode.Disposable {
       readyResolve();
       lines.close();
       if (this.broker !== broker) return;
+      this.restoreRoute();
       this.broker = undefined;
       this.core.clear();
       for (const token of this.activeUI) token.cancel();
@@ -635,18 +636,21 @@ class Runtime implements vscode.Disposable {
     this.output.show();
   }
   private stopBroker() {
-    if (process.env.SSHPM_WINDOW_PIPE === this.route) {
-      if (this.previousRoute === undefined)
-        delete process.env.SSHPM_WINDOW_PIPE;
-      else process.env.SSHPM_WINDOW_PIPE = this.previousRoute;
-    }
-    this.route = undefined;
+    this.restoreRoute();
     if (this.restart) clearTimeout(this.restart);
     for (const t of this.activeUI) t.cancel();
     const b = this.broker;
     this.broker = undefined;
     b?.stdin.end();
     setTimeout(() => b?.kill(), 1000).unref();
+  }
+  private restoreRoute() {
+    if (process.env.SSHPM_WINDOW_PIPE === this.route) {
+      if (this.previousRoute === undefined)
+        delete process.env.SSHPM_WINDOW_PIPE;
+      else process.env.SSHPM_WINDOW_PIPE = this.previousRoute;
+    }
+    this.route = undefined;
   }
   dispose() {
     if (this.stopping) return;

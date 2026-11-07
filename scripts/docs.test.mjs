@@ -174,3 +174,36 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
   for (const link of links)
     assert.ok(link.startsWith('https://') || link.startsWith('#'), link);
 });
+
+test('stable distribution is explicit and automatic distribution stays preview-only', async () => {
+  const workflow = await read('.github/workflows/publish.yml');
+  assert.ok(workflow.includes('workflow_dispatch:'));
+  assert.ok(workflow.includes('options: [stable, preview]'));
+  assert.ok(workflow.includes('source_run_id'));
+  assert.ok(workflow.includes("inputs.release_channel || 'preview'"));
+  assert.ok(workflow.includes('-Channel $env:RELEASE_CHANNEL'));
+  const release = await read('scripts/release-from-ci.ps1');
+  assert.ok(
+    release.includes(
+      "[ValidateSet('preview','stable')][string]$Channel='preview'",
+    ),
+  );
+  assert.ok(
+    release.includes(
+      "$env:GITHUB_EVENT_NAME -notin @('workflow_run','workflow_dispatch')",
+    ),
+  );
+  assert.ok(release.includes("if($prerelease){$releaseArgs+='--prerelease'}"));
+  assert.ok(!/gh\s+release\s+create[^]*--prerelease/.test(release));
+});
+
+test('release metadata and package hygiene do not advertise a preview', async () => {
+  const english = JSON.parse(await read('package.nls.json'));
+  const chinese = JSON.parse(await read('package.nls.zh-cn.json'));
+  assert.ok(!/preview/i.test(english['extension.description']));
+  assert.ok(!chinese['extension.description'].includes('预览'));
+  assert.ok(!/^> \*\*Preview/m.test(await read('README.md')));
+  const ignore = await read('.vscodeignore');
+  for (const pattern of ['.env.*', '*.log', '**/.DS_Store'])
+    assert.ok(ignore.includes(pattern), pattern);
+});

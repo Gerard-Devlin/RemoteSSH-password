@@ -46,7 +46,7 @@ npm run verify:package
 
 The platform VSIX packages work for both local installation and manual Marketplace upload. The README uses absolute HTTPS documentation/image URLs, and the normal vsce link processing stays enabled.
 
-Package verification checks the publisher against Devlin, the complete extension identity/version, the platform, exact file inventory, source hashes, native x64 binaries, and the published README link scheme.
+Package verification checks the publisher against Devlin, the complete extension identity/version, the platform, an exact file inventory allowlist, source hashes, native architecture, and the published README link scheme. Any unexpected file fails packaging verification.
 
 ## Upload from the publisher account
 
@@ -55,13 +55,13 @@ Package verification checks the publisher against Devlin, the complete extension
 3. Review the identity, version, description, icon, and compatibility requirements in the management page.
 4. Complete the platform's submission process and inspect its validation status.
 
-Local packaging never uploads an extension. The distribution workflow creates a GitHub preview Release after trusted main-branch CI succeeds. Marketplace publishing additionally requires the one-time setup below.
+Local packaging never uploads an extension. Automatic distribution from a trusted main-branch push remains preview-only. Stable distribution requires the explicit manual workflow described below. Marketplace publishing additionally requires the one-time setup below.
 
 Use [Microsoft's publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) for account-side publishing. Later automated publishing can use GitHub Trusted Publishing, after the publisher policy and workflow have been configured.
 
 ## Validation scope
 
-This publisher change does not expand supported platforms, OpenSSH builds, authentication modes, or the tested VS Code baseline. The [test report](testing/2026-11-06.md) distinguishes loopback/mocked-API checks from real-host UI and SecretStorage acceptance.
+This publisher change does not expand supported platforms, OpenSSH builds, authentication modes, or the tested VS Code baseline. The [candidate report](testing/2026-11-07.md#100-release-candidate) distinguishes loopback/mocked-API checks from real-host UI and SecretStorage acceptance.
 
 ## One-time automatic publishing setup
 
@@ -90,14 +90,27 @@ git commit -m "Describe the update"
 git push origin main
 ```
 
-The version command updates package.json, package-lock.json, both README version references, and the changelog. Use version:minor for a minor increment. Add -- --dry-run to preview changes.
+The version command updates package.json, package-lock.json, both README version references, and the changelog. Use `version:minor`, `version:major`, or add `-- --dry-run` to preview changes.
 
-A successful trusted main-branch push runs Platform checks, verifies the VSIX, and creates an immutable GitHub preview Release with the installer and SHA256SUMS-<target>.txt. When the Marketplace switch is enabled, it publishes the same canonical packages to publisher Devlin. Pull requests and other branches do not distribute packages.
+A successful trusted main-branch push runs Platform checks, verifies the VSIX, and creates a non-overwriting GitHub preview Release with the installer and SHA256SUMS-<target>.txt. When the Marketplace switch is enabled, it publishes the same canonical packages to publisher Devlin. Pull requests and other branches do not distribute packages.
 
 Existing tags and published assets are not overwritten. If a version already belongs to another commit, distribution is skipped with a reminder to increment the version. Rerunning the same commit reuses and verifies the existing release package. Existing Marketplace versions are skipped rather than replaced.
 
 Check both Platform checks and Release and Marketplace in GitHub Actions. A skipped Marketplace job means setup is not enabled or the version was already used; it does not mean the extension was uploaded.
 
-## Platform packages in 0.3.0
+## Stable releases
+
+Automatic `workflow_run` distribution is always a preview. A stable release is explicit:
+
+1. Merge the approved version and metadata changes to `main`.
+2. Wait for the Platform checks run for that exact commit to complete successfully.
+3. Open **Release and Marketplace** in GitHub Actions and choose **Run workflow** on `main`.
+4. Select `stable` and enter that successful Platform checks run ID.
+5. The workflow rejects a run from another commit, branch, workflow, or conclusion. It also rejects an existing Release with a different channel instead of silently promoting or demoting it.
+6. Review the resulting stable GitHub Release and Marketplace job. The manual workflow is the only path that can publish a stable Release.
+
+Do not reuse a version already published to the Marketplace. To change a preview version's metadata or channel, publish a new version.
+
+## Platform packages
 
 The CI matrix builds `win32-x64`, `darwin-arm64`, and `darwin-x64` packages. Each has its own `package-verification-<target>.json` receipt and `SHA256SUMS-<target>.txt`. Distribution verifies each receipt against the same trusted commit and creates canonical assets before Marketplace upload. The Marketplace selects the matching local platform. Build all targets on macOS with `npm run package:all`; macOS compilation requires Xcode Command Line Tools.

@@ -18,6 +18,14 @@ package-lock.json
 .editorconfig
 .prettierrc.json
 .prettierignore
+.env
+.env.*
+*.log
+*.tmp
+.DS_Store
+**/.DS_Store
+.npmrc
+coverage/**
 
 # Keep the contributor link in the bundled README usable.
 !CONTRIBUTING.md
