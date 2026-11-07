@@ -26,7 +26,6 @@ package-lock.json
 **/.DS_Store
 .npmrc
 coverage/**
-media/download-glass-*.svg
 
 # Keep the contributor link in the bundled README usable.
 !CONTRIBUTING.md

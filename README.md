@@ -9,11 +9,8 @@
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version 1.0.0"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=social" alt="GitHub stars"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="MIT license"></a>
-</p>
-
-<p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-windows.png" alt="Download for Windows x64" width="253" height="52"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-macos.png" alt="Download for macOS Apple Silicon" width="253" height="52"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/Windows-x64-0078D6?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40NDkgOS43NSAyLjF2OS40NTFIMG0xMC45NDktOS42MDJMMjQgMHYxMS40SDEwLjk0OU0wIDEyLjZoOS43NXY5LjQ1MUwwIDIwLjY5OW0xMC45NDktOC4wOTlIMjRWMjRsLTEzLjA1MS0xLjg1MSIvPjwvc3ZnPg%3D%3D&amp;logoColor=white&amp;style=flat-square" alt="Windows x64"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&amp;logoColor=white&amp;style=flat-square" alt="macOS Apple Silicon and Intel"></a>
 </p>
 
 <p align="center">Remember fixed SSH passwords in VS Code. Keep using Microsoft Remote-SSH.</p>

@@ -149,22 +149,6 @@ test('Marketplace icon and original README artwork use independent assets', asyn
   );
 });
 
-test('glass download badges are transparent 2x PNG assets', async () => {
-  for (const name of ['windows', 'macos']) {
-    const bytes = await fs.readFile(
-      path.join(root, 'media', `download-glass-${name}.png`),
-    );
-    assert.equal(
-      bytes.subarray(0, 8).toString('hex'),
-      '89504e470d0a1a0a',
-      name,
-    );
-    assert.equal(bytes.readUInt32BE(16), 506);
-    assert.equal(bytes.readUInt32BE(20), 104);
-    assert.ok([4, 6].includes(bytes[25]), 'Transparent PNG required: ' + name);
-  }
-});
-
 test('repository contribution and issue entry points exist', async () => {
   for (const file of [
     'LICENSE',
@@ -207,19 +191,6 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
       'github/stars/Gerard-Devlin/RemoteSSH-password?style=social',
     ),
   );
-  for (const asset of [
-    'download-glass-windows.png',
-    'download-glass-macos.png',
-  ]) {
-    assert.ok(
-      new RegExp(
-        '<a href="https://marketplace\\.visualstudio\\.com/items\\?itemName=Devlin\\.remote-ssh-password-memory"><img src="https://raw\\.githubusercontent\\.com/Gerard-Devlin/RemoteSSH-password/main/media/' +
-          asset +
-          '"',
-      ).test(content),
-      asset + ' must link to the Marketplace',
-    );
-  }
 });
 
 test('stable distribution is explicit and automatic distribution stays preview-only', async () => {
