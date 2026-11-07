@@ -186,6 +186,19 @@ test('Marketplace README links and images use HTTPS or local section anchors', a
       'github/stars/Gerard-Devlin/RemoteSSH-password?style=flat-square&amp;color=yellow',
     ),
   );
+  for (const asset of [
+    'download-glass-windows.svg',
+    'download-glass-macos.svg',
+  ]) {
+    assert.ok(
+      new RegExp(
+        '<a href="https://marketplace\\.visualstudio\\.com/items\\?itemName=Devlin\\.remote-ssh-password-memory"><img src="https://raw\\.githubusercontent\\.com/Gerard-Devlin/RemoteSSH-password/main/media/' +
+          asset +
+          '"',
+      ).test(content),
+      asset + ' must link to the Marketplace',
+    );
+  }
 });
 
 test('stable distribution is explicit and automatic distribution stays preview-only', async () => {

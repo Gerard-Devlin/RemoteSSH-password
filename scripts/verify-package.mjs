@@ -79,6 +79,8 @@ const expectedEntries = [
   'extension/docs/troubleshooting.md',
   'extension/docs/ui-text.md',
   'extension/l10n/bundle.l10n.zh-cn.json',
+  'extension/media/download-glass-macos.svg',
+  'extension/media/download-glass-windows.svg',
   'extension/media/icon.png',
   'extension/media/readme-logo.png',
   'extension/package.json',
