@@ -12,8 +12,8 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-windows.svg" alt="Download for Windows x64" width="253" height="52"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-macos.svg" alt="Download for macOS Apple Silicon" width="253" height="52"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-windows.png" alt="Download for Windows x64" width="253" height="52"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory"><img src="https://raw.githubusercontent.com/Gerard-Devlin/RemoteSSH-password/main/media/download-glass-macos.png" alt="Download for macOS Apple Silicon" width="253" height="52"></a>
 </p>
 
 <p align="center">Remember fixed SSH passwords in VS Code. Keep using Microsoft Remote-SSH.</p>
