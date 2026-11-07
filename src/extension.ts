@@ -131,6 +131,17 @@ class Runtime implements vscode.Disposable {
           void this.command(() => this.reconcile()).catch(() => {});
       }),
     );
+    context.subscriptions.push(
+      vscode.window.onDidChangeWindowState((state) =>
+        this.updateWindowFocus(state.focused),
+      ),
+    );
+  }
+  private updateWindowFocus(focused: boolean) {
+    if (!focused || !this.broker?.stdin.writable) return;
+    this.broker.stdin.write(
+      JSON.stringify({ type: 'focus', focused: true }) + '\n',
+    );
   }
   private updateIndex(key: string, record?: Metadata): Promise<void> {
     const work = this.indexQueue.then(async () => {
@@ -416,6 +427,7 @@ class Runtime implements vscode.Disposable {
         healthy = true;
         this.route = m.prompt;
         process.env.SSHPM_WINDOW_PIPE = m.prompt;
+        this.updateWindowFocus(vscode.window.state.focused);
         clearTimeout(timer);
         readyResolve();
         this.output.appendLine(

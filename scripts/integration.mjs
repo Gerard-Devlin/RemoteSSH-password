@@ -115,9 +115,11 @@ function makeCore() {
     async () => {},
   );
 }
-async function broker() {
+async function broker(extraEnv = {}) {
   const core = makeCore(),
-    p = proc(path.join(dir, 'broker' + suffix));
+    p = proc(path.join(dir, 'broker' + suffix), [], {
+      env: { ...process.env, ...extraEnv },
+    });
   p.on('close', () => core.clear());
   let route;
   let errors = 0;
@@ -183,9 +185,13 @@ function base(port, opts = []) {
     'fixture@127.0.0.1',
   ];
 }
-async function run(exe, args, route, input = '') {
+async function run(exe, args, route, input = '', extraEnv = {}) {
   const p = proc(exe, args, {
-    env: { ...process.env, SSHPM_WINDOW_PIPE: route ?? '' },
+    env: {
+      ...process.env,
+      ...extraEnv,
+      SSHPM_WINDOW_PIPE: route ?? '',
+    },
   });
   let stdout = '',
     stderr = '';
@@ -253,6 +259,24 @@ try {
     assert.equal((await ssh(s, b, ['fixture'])).code, 0);
     assert.equal(prompts, n);
   });
+  await check(
+    'detached local server selects the broker without an inherited route',
+    async () => {
+      const instance = '4242424242',
+        b2 = await broker({ VSCODE_PID: instance }),
+        n = prompts,
+        r = await run(
+          path.join(dir, 'ssh' + suffix),
+          [...base(s.port), 'fixture'],
+          '',
+          '',
+          { VSCODE_PID: instance },
+        );
+      assert.equal(r.code, 0);
+      assert.equal(prompts, n);
+      b2.p.stdin.end();
+    },
+  );
   await check('exit code and standard input preserved', async () => {
     assert.equal((await ssh(s, b, ['exit-7'])).code, 7);
     const r = await ssh(s, b, ['echo-stdin'], 'echo test 中文\n');

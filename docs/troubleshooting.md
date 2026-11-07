@@ -51,7 +51,9 @@ If an old password is rejected, it is not repeatedly offered automatically in th
 
 Updates with the same publisher and extension name keep the same SecretStorage namespace. The credential key does not contain the extension version or installation path. Reloading, disabling, and re-enabling do not delete saved passwords.
 
-If a standard Remote-SSH password input appears only after updating or reloading, fully exit all VS Code windows and reopen before retrying. A detached Remote-SSH local server can retain an address for a previous authentication service. Re-enabling alone cannot replace the environment of an already running detached process. This is a troubleshooting step, not proof of the cause; keep the saved record while checking.
+Version 0.3.2 and later identify the current VS Code instance even when Remote-SSH starts a detached local-server process that does not inherit the extension host's bridge route. Reloading a window is sufficient to activate the installed helper; fully exiting every VS Code window is no longer required for this routing case.
+
+If the standard Remote-SSH prompt still appears after reloading 0.3.2 or later, open **Show Diagnostics**. The selected helper should belong to the installed version, and the authentication service should report running. Preserve saved credentials while collecting that evidence.
 
 The list confirms that a credential is stored; it does not mean that every authentication request can use it. Open **Show Diagnostics** after reproducing the prompt:
 

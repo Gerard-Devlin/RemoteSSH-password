@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -22,7 +23,7 @@ type uiBridge struct {
 	done    chan struct{}
 }
 
-func newUI() *uiBridge {
+func newUI(onFocus func(bool)) *uiBridge {
 	u := &uiBridge{pending: map[string]chan Message{}, done: make(chan struct{})}
 	go func() {
 		defer close(u.done)
@@ -31,6 +32,12 @@ func newUI() *uiBridge {
 		for s.Scan() {
 			var m Message
 			if json.Unmarshal(s.Bytes(), &m) != nil {
+				continue
+			}
+			if m.Type == "focus" {
+				if onFocus != nil {
+					onFocus(m.Focused)
+				}
 				continue
 			}
 			u.mu.Lock()
@@ -72,13 +79,43 @@ func (u *uiBridge) request(m Message) (Message, error) {
 }
 
 type windowInfo struct {
-	Pipe   string `json:"pipe"`
-	PID    uint32 `json:"pid"`
-	Parent uint32 `json:"parent"`
+	Pipe     string `json:"pipe"`
+	PID      uint32 `json:"pid"`
+	Parent   uint32 `json:"parent"`
+	Instance string `json:"instance,omitempty"`
+	Focused  uint64 `json:"focused,omitempty"`
+}
+
+// Remote-SSH's detached local-server process is not a descendant of the
+// extension host. Both processes do, however, inherit the same VS Code
+// instance identity. Window focus breaks ties when one VS Code process owns
+// several windows.
+func windowInstance() string {
+	if pid := strings.TrimSpace(os.Getenv("VSCODE_PID")); pid != "" {
+		return "pid:" + pid
+	}
+	if hook := strings.TrimSpace(os.Getenv("VSCODE_IPC_HOOK")); hook != "" {
+		return fmt.Sprintf("ipc:%x", sha256.Sum256([]byte(hook)))
+	}
+	return ""
+}
+
+func writeWindowInfo(file string, info windowInfo) error {
+	b, e := json.Marshal(info)
+	if e != nil {
+		return e
+	}
+	temp := file + "." + nonce() + ".tmp"
+	if e = os.WriteFile(temp, b, 0600); e == nil {
+		e = os.Rename(temp, file)
+	}
+	if e != nil {
+		_ = os.Remove(temp)
+	}
+	return e
 }
 
 func runBroker(dir string) int {
-	u := newUI()
 	p := stablePipe(dir) + "-window-" + nonce()
 	l, e := secureListen(p)
 	if e != nil {
@@ -86,13 +123,32 @@ func runBroker(dir string) int {
 	}
 	defer l.Close()
 	os.MkdirAll(filepath.Join(dir, "windows"), 0700)
-	info := windowInfo{Pipe: p, PID: uint32(os.Getpid()), Parent: uint32(os.Getppid())}
-	b, _ := json.Marshal(info)
 	f := filepath.Join(dir, "windows", nonce()+".json")
-	if os.WriteFile(f, b, 0600) != nil {
+	info := windowInfo{
+		Pipe:     p,
+		PID:      uint32(os.Getpid()),
+		Parent:   uint32(os.Getppid()),
+		Instance: windowInstance(),
+	}
+	var infoMu sync.Mutex
+	saveInfo := func() bool {
+		infoMu.Lock()
+		defer infoMu.Unlock()
+		return writeWindowInfo(f, info) == nil
+	}
+	if !saveInfo() {
 		return 1
 	}
 	defer os.Remove(f)
+	u := newUI(func(focused bool) {
+		if !focused {
+			return
+		}
+		infoMu.Lock()
+		info.Focused = uint64(time.Now().UnixNano())
+		infoMu.Unlock()
+		_ = saveInfo()
+	})
 	u.emit(Message{Type: "ready", Prompt: p})
 	go func() {
 		for {
@@ -167,20 +223,52 @@ func serveWindow(c net.Conn, dir string, u *uiBridge) {
 		}
 	}
 }
+
+func chooseWindow(windows []windowInfo, instance string, ancestry map[uint32]int) string {
+	candidates := windows
+	if instance != "" {
+		matching := []windowInfo{}
+		var newest uint64
+		for _, w := range windows {
+			if w.Instance == instance {
+				matching = append(matching, w)
+				if w.Focused >= newest {
+					newest = w.Focused
+				}
+			}
+		}
+		if len(matching) == 1 {
+			return matching[0].Pipe
+		}
+		if len(matching) > 1 {
+			candidates = matching
+			if newest > 0 {
+				for _, w := range matching {
+					if w.Focused == newest {
+						return w.Pipe
+					}
+				}
+			}
+		}
+	}
+	chosen := ""
+	best := 1000
+	for _, w := range candidates {
+		if d, ok := ancestry[w.Parent]; ok && d < best {
+			best = d
+			chosen = w.Pipe
+		}
+	}
+	return chosen
+}
+
 func selectWindow(dir string) (net.Conn, error) {
 	expected := filepath.Join(dir, executableName("broker"))
 	if p := os.Getenv("SSHPM_WINDOW_PIPE"); p != "" {
 		return dialVerified(p, expected, 300*time.Millisecond)
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, "windows", "*.json"))
-	parents := parentMap()
-	ancestry := map[uint32]int{}
-	n := uint32(os.Getpid())
-	for i := 0; i < 32 && n != 0; i++ {
-		ancestry[n] = i
-		n = parents[n]
-	}
-	best := 1000
+	windows := []windowInfo{}
 	chosen := ""
 	for _, f := range files {
 		b, e := os.ReadFile(f)
@@ -191,11 +279,16 @@ func selectWindow(dir string) (net.Conn, error) {
 		if json.Unmarshal(b, &w) != nil || !samePath(processImage(w.PID), expected) {
 			continue
 		}
-		if d, ok := ancestry[w.Parent]; ok && d < best {
-			best = d
-			chosen = w.Pipe
-		}
+		windows = append(windows, w)
 	}
+	parents := parentMap()
+	ancestry := map[uint32]int{}
+	n := uint32(os.Getpid())
+	for i := 0; i < 32 && n != 0; i++ {
+		ancestry[n] = i
+		n = parents[n]
+	}
+	chosen = chooseWindow(windows, windowInstance(), ancestry)
 	if chosen == "" {
 		return nil, net.ErrClosed
 	}

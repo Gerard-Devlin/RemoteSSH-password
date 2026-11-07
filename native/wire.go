@@ -40,6 +40,7 @@ type Message struct {
 	Failed      bool   `json:"failed,omitempty"`
 	Source      string `json:"source,omitempty"`
 	Method      string `json:"method,omitempty"`
+	Focused     bool   `json:"focused,omitempty"`
 	Reply       *Reply `json:"reply,omitempty"`
 }
 

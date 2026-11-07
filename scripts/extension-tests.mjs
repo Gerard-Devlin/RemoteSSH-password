@@ -42,6 +42,7 @@ let selectCredential = false;
 let rememberChoice = true;
 const root = process.cwd(),
   tmp = path.join(root, '.test-runtime', 'extension-' + randomUUID());
+process.env.VSCODE_PID = '4242424242';
 await fs.mkdir(tmp, { recursive: true });
 await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
 const settings = new Map([
@@ -54,7 +55,8 @@ const original = new Map(settings),
   secrets = new Map(),
   globalState = new Map(),
   configListeners = new Set(),
-  secretListeners = new Set();
+  secretListeners = new Set(),
+  windowStateListeners = new Set();
 const results = [],
   children = [],
   messages = [],
@@ -106,6 +108,11 @@ const api = {
     },
   },
   window: {
+    state: { focused: true },
+    onDidChangeWindowState: (f) => {
+      windowStateListeners.add(f);
+      return { dispose: () => windowStateListeners.delete(f) };
+    },
     createOutputChannel: () => ({
       appendLine: (s) => messages.push(s),
       show() {},
@@ -197,11 +204,13 @@ const check = async (name, fn) => {
   console.log('PASS ' + name);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function run(exe, args, extraEnv = {}) {
+async function run(exe, args, extraEnv = {}, withoutRoute = false) {
+  const env = { ...process.env, ...extraEnv };
+  if (withoutRoute) delete env.SSHPM_WINDOW_PIPE;
   const p = spawn(exe, args, {
     windowsHide: true,
     stdio: 'pipe',
-    env: { ...process.env, ...extraEnv },
+    env,
   });
   children.push(p);
   let stdout = '',
@@ -364,9 +373,9 @@ try {
   ];
   const bridge = settings.get('path');
   await check(
-    'actual extension UI adapters and native bridge commit only after success',
+    'actual extension UI adapters take over a detached Remote-SSH local server',
     async () => {
-      const r = await run(bridge, args);
+      const r = await run(bridge, args, {}, true);
       assert.equal(r.code, 0);
       assert.equal(r.stdout, 'fixture-ok\n');
       assert.equal(inputCount, 1);
@@ -380,7 +389,7 @@ try {
   await check(
     'actual extension reconnect reuses credential without asking',
     async () => {
-      assert.equal((await run(bridge, args)).code, 0);
+      assert.equal((await run(bridge, args, {}, true)).code, 0);
       assert.equal(inputCount, 1);
     },
   );

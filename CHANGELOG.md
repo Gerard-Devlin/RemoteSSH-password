@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.2 — 2026-11-07
+
+- Fix the ordinary Remote-SSH password box appearing after reloads on modern Windows and macOS builds. Remote-SSH's detached local server is not a child of the extension host, so routing now uses the shared VS Code instance identity and current-window focus instead of relying on inherited environment state.
+
 ## 0.3.1 — 2026-11-07
 
 - Fix reconnects after helper upgrades on Windows and macOS. Setup now recognizes every existing `bridge-v2` generation so it never adopts an older extension wrapper as the real OpenSSH program; the native bridge also resolves legacy wrapper chains at runtime and falls back to ordinary OpenSSH if a loop is detected.

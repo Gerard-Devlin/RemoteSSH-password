@@ -27,7 +27,7 @@ The four platform helper executables are the same Go binary dispatched by filena
 
 ## Windows, macOS and storage lifecycle
 
-Each window owns its route. An explicitly stale route fails instead of choosing another window. A current-user coordinator merges only compatible in-flight requests for the same target/fingerprint/rejection state; it is not a native password cache.
+Each window owns its route. Remote-SSH's detached local-server process shares VS Code's instance identity with the extension host even though it is not a descendant. The bridge therefore matches that identity rather than requiring inherited environment state, and window-focus updates disambiguate multiple windows in the same VS Code process. An explicitly stale route fails instead of choosing another window. A current-user coordinator merges only compatible in-flight requests for the same target/fingerprint/rejection state; it is not a native password cache.
 
 Complete immutable `globalStorageUri/bridge-v2/<version-hash>` generations survive versioned extension replacement. All four adjacent executables share a generation; upgrades select a new directory while existing processes can finish with the old files. `control-v2.json` and a process lock coordinate automatic setup, explicit off/suspended intent, and safe settings restoration. `bridge.json` and `recovery.json` contain routing/configuration metadata, never passwords. SecretStorage holds credential values and revocation state. Credential records also identify the authentication method; older records remain compatible with SSH password authentication. Settings restoration compares current values before writing, preserving later user changes.
 
