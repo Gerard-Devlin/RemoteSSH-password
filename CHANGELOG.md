@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.0.1 — 2026-11-07
+
+- Publish the first stable build as 1.0.1 after GitHub's immutable-release policy permanently reserved the deleted v1.0.0 tag name during release recovery.
+
 ## 1.0.0 — 2026-11-07
 
 - Add a 1.0.0 release candidate with safe recovery from a stale inherited Remote-SSH route, exact VSIX inventory verification, and an explicit manual stable-release channel.
