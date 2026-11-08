@@ -46,7 +46,7 @@ assert.ok(
 const packaged = JSON.parse(entries.get('extension/package.json'));
 for (const key of ['name', 'publisher', 'version'])
   assert.equal(packaged[key], metadata[key]);
-assert.equal(packaged.engines.vscode, '^1.85.0');
+assert.equal(packaged.engines.vscode, metadata.engines.vscode);
 assert.ok(manifest.includes('Version="' + metadata.version + '"'));
 const expectedHelpers = ['ssh', 'scp', 'askpass', 'broker']
   .map((name) => 'extension/bin/' + name + suffix)
@@ -76,6 +76,7 @@ const expectedEntries = [
   'extension/docs/testing/2026-11-05.md',
   'extension/docs/testing/2026-11-06.md',
   'extension/docs/testing/2026-11-07.md',
+  'extension/docs/testing/2026-11-09.md',
   'extension/docs/troubleshooting.md',
   'extension/docs/ui-text.md',
   'extension/l10n/bundle.l10n.zh-cn.json',

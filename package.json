@@ -2,11 +2,11 @@
   "name": "remote-ssh-password-memory",
   "displayName": "Remote SSH Password Memory",
   "description": "%extension.description%",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "publisher": "Devlin",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.73.0"
   },
   "categories": [
     "Other"
@@ -73,6 +73,7 @@
     "test:extension": "npm run build && npm run build:fixture && node scripts/extension-tests.mjs en && node scripts/extension-tests.mjs zh-cn",
     "test:localization": "node --test scripts/localization.test.mjs",
     "test:docs": "node --test scripts/docs.test.mjs",
+    "test:vscode-compat": "npm run build && node scripts/vscode-compat.test.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm test",
@@ -83,10 +84,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/vscode": "1.85.0",
+    "@types/vscode": "1.73.0",
+    "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "^4.1.0",
-    "typescript": "^5.9.0",
     "prettier": "^3.6.2",
+    "typescript": "^5.9.0",
     "yauzl": "^3.4.0"
   },
   "overrides": {

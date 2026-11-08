@@ -4,14 +4,16 @@
 
 ## Supported baseline
 
-| Component            | Baseline and evidence                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| Platform             | Windows x64 and macOS arm64/x64; local UI extension host only.                           |
-| VS Code              | Minimum 1.85.0; compiled against that API. VS Code 1.136.1 is within the declared range. |
-| Microsoft Remote-SSH | Integration inspected at 0.128.0; other versions are unverified.                         |
-| OpenSSH              | Windows: exact 9.5p2 hash below. macOS: OpenSSH 9.0+ with LogVerbose support.            |
-| Authentication       | Direct SSH password, or a verified single Password request using keyboard-interactive.   |
-| Language             | English fallback and Simplified Chinese (`zh-cn`).                                       |
+| Component            | Baseline and evidence                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| Platform             | Windows x64 and macOS arm64/x64; local UI extension host only.                         |
+| VS Code              | Minimum 1.73.0; compiled against that API.                                             |
+| Microsoft Remote-SSH | Current integration inspected at 0.128.0. VS Code selects the newest compatible build. |
+| OpenSSH              | Windows: exact 9.5p2 hash below. macOS: OpenSSH 9.0+ with LogVerbose support.          |
+| Authentication       | Direct SSH password, or a verified single Password request using keyboard-interactive. |
+| Language             | English fallback and Simplified Chinese (`zh-cn`).                                     |
+
+The 1.73.0 floor is the release that made `vscode.l10n` available to extensions. The extension and its type definitions intentionally target that API floor, so newer editor APIs are not required. Remote-SSH has its own editor requirement and may require a newer VS Code release; Marketplace extension resolution installs the newest Remote-SSH version compatible with the running editor.
 
 Supported real `ssh.exe` SHA256:
 
@@ -58,4 +60,4 @@ Managed connections suppress pre-authentication server banners to prevent spoofe
 
 The target comes from real OpenSSH `-G` output, preserving SSH config precedence, including duplicate Host entries. Matching uses a lowercased hostname, exact port, case-sensitive username, and verified SHA256 host-key fingerprint. Different DNS names are not intentionally merged; a different host-key algorithm can conservatively require re-entry.
 
-Window coordination is limited to the current local account and the same VS Code storage context. Profiles and separate user-data directories do not share credentials. See the [test report](testing/2026-11-07.md) for what has actually been exercised.
+Window coordination is limited to the current local account and the same VS Code storage context. Profiles and separate user-data directories do not share credentials. See the [current test report](testing/2026-11-09.md) for what has actually been exercised.

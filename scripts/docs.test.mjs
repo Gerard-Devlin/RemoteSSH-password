@@ -127,6 +127,28 @@ test('release versions and README installation example agree', async () => {
   );
 });
 
+test('VS Code compatibility floor and compiled API types stay aligned', async () => {
+  assert.equal(manifest.engines.vscode, '^1.73.0');
+  assert.equal(manifest.devDependencies['@types/vscode'], '1.73.0');
+  assert.equal(lock.packages[''].engines.vscode, manifest.engines.vscode);
+  assert.equal(lock.packages['node_modules/@types/vscode'].version, '1.73.0');
+  for (const file of [
+    'README.md',
+    'docs/README.zh-CN.md',
+    'docs/compatibility.md',
+  ])
+    assert.ok((await read(file)).includes('1.73.0'), file);
+  assert.equal(
+    manifest.scripts['test:vscode-compat'],
+    'npm run build && node scripts/vscode-compat.test.mjs',
+  );
+  assert.ok(
+    (await read('.github/workflows/ci.yml')).includes(
+      'run: npm run test:vscode-compat',
+    ),
+  );
+});
+
 test('Marketplace icon and original README artwork use independent assets', async () => {
   assert.equal(manifest.icon, 'media/icon.png');
   const icon = await fs.readFile(path.join(root, manifest.icon));

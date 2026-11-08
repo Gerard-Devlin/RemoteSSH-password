@@ -71,6 +71,9 @@ jobs:
       - name: English and Chinese extension-entry integration (mocked VS Code API)
         if: steps.ssh.outputs.supported == 'true'
         run: npm run test:extension
+      - name: VS Code 1.73 compatibility smoke test
+        if: matrix.target == 'darwin-arm64'
+        run: npm run test:vscode-compat
       - name: Record unavailable integration coverage
         if: steps.ssh.outputs.supported != 'true'
         run: echo 'NOT RUN - the system OpenSSH build is unsupported. See the job summary.'
