@@ -157,6 +157,8 @@ func TestTaggedSuccess(t *testing.T) {
 func TestTaggedTruncatedWindowsSourceNames(t *testing.T) {
 	for _, line := range []string{
 		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconn:verify_host_key():1506 (pid=23776): Server host key: ssh-ed25519 SHA256:test`,
+		`debug1: C:\\__w\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconnect.:check_host_key():1295 (pid=23776): Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.`,
+		`C:\\__w\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconnect2:ssh_userauth2():489 (pid=23776): Authenticated to 127.0.0.1 ([127.0.0.1]:2222) using "password".`,
 		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\readpas:read_passphrase():175 (pid=23776): requested to askpass`,
 		`debug3: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\packet.:ssh_packet_read_poll2():1664 (pid=23776): receive packet: type 52`,
 	} {

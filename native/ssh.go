@@ -33,8 +33,8 @@ type authSession struct {
 	packetPrefix string
 }
 
-var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
-var taggedLogTruncatedBin = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\(bin=.*?: (.*)$")
+var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|sshconnect\\.|sshconnect2|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
+var taggedLogTruncatedBin = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|sshconnect\\.|sshconnect2|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\(bin=.*?: (.*)$")
 
 type taggedLogParts struct {
 	function string
