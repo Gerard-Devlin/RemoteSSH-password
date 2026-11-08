@@ -33,7 +33,47 @@ type authSession struct {
 	packetPrefix string
 }
 
-var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*(sshconnect2?\\.c|readpass\\.c|packet\\.c):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
+var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|sshconnect\\.|sshconnect2|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
+var taggedLogTruncatedBin = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|sshconnect\\.|sshconnect2|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\(bin=.*?: (.*)$")
+
+type taggedLogParts struct {
+	function string
+	body     string
+	pid      string
+}
+
+func visibleTaggedBody(function, body string) bool {
+	if function == "ssh_packet_read_poll2" {
+		return false
+	}
+	if function == "authmethod_get" {
+		return strings.HasPrefix(body, "Next authentication method: ")
+	}
+	if function == "input_userauth_info_req" {
+		return strings.HasPrefix(body, "num_prompts ")
+	}
+	if function == "input_userauth_failure" {
+		return strings.HasPrefix(body, "Authenticated using \"") &&
+			strings.HasSuffix(body, " with partial success.")
+	}
+	return true
+}
+
+func parseTaggedLog(line string) (taggedLogParts, bool) {
+	if match := taggedLog.FindStringSubmatch(line); match != nil {
+		return taggedLogParts{function: match[2], pid: match[4], body: match[5]}, true
+	}
+	if match := taggedLogTruncatedBin.FindStringSubmatch(line); match != nil {
+		return taggedLogParts{function: match[2], body: match[4]}, true
+	}
+	return taggedLogParts{}, false
+}
+
+func askpassDiagnostic(stage string) {
+	if os.Getenv("SSHPM_DIAGNOSTIC_ASKPASS") != "" {
+		fmt.Fprintln(os.Stderr, "SSHPasswordMemory askpass diagnostic: "+stage)
+	}
+}
 
 func (s *authSession) consumeLog(r io.Reader) {
 	reader := bufio.NewReaderSize(r, 65536)
@@ -64,26 +104,26 @@ func (s *authSession) consumeLog(r io.Reader) {
 }
 func (s *authSession) consumeLine(line []byte) {
 	l := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
-	m := taggedLog.FindStringSubmatch(l)
-	if m == nil || m[4] != strconv.Itoa(int(s.pid)) {
+	m, ok := parseTaggedLog(l)
+	if !ok || (m.pid != "" && m.pid != strconv.Itoa(int(s.pid))) {
 		os.Stderr.Write(line)
 		return
 	}
-	body := m[5]
+	body := m.body
 	if strings.HasPrefix(l, "debug1: ") {
 		body = "debug1: " + body
 	}
 	s.mu.Lock()
-	updatePlatformState(&s.state, m[2], m[5])
-	if m[2] == "read_passphrase" && strings.Contains(body, "requested to askpass") {
+	updatePlatformState(&s.state, m.function, m.body)
+	if m.function == "read_passphrase" && strings.Contains(body, "requested to askpass") {
 		s.logAsks++
 	}
 	if !s.completed {
-		if m[2] == "ssh_packet_read_poll2" {
-			s.packetPrefix = strings.TrimSuffix(l, m[5]) + "receive packet: type "
-			s.state.packet(m[5])
+		if m.function == "ssh_packet_read_poll2" {
+			s.packetPrefix = strings.TrimSuffix(l, m.body) + "receive packet: type "
+			s.state.packet(m.body)
 		} else {
-			if m[2] == "input_userauth_info_req" {
+			if m.function == "input_userauth_info_req" {
 				if strings.HasPrefix(body, "num_prompts ") {
 					if n, e := strconv.Atoi(strings.TrimPrefix(body, "num_prompts ")); e == nil {
 						s.state.keyboardPrompts(n)
@@ -96,7 +136,7 @@ func (s *authSession) consumeLine(line []byte) {
 	}
 	success := s.state.Success
 	s.mu.Unlock()
-	if m[2] != "ssh_packet_read_poll2" {
+	if visibleTaggedBody(m.function, body) {
 		fmt.Fprintln(os.Stderr, body)
 	}
 	if success {
@@ -124,16 +164,23 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 		return
 	}
 	pid, e := peerPID(c, false)
-	if e != nil || !samePath(processImage(pid), filepath.Join(dir, executableName("askpass"))) {
+	if e != nil {
+		askpassDiagnostic("peer-pid")
+		return
+	}
+	if !samePath(processImage(pid), filepath.Join(dir, executableName("askpass"))) {
+		askpassDiagnostic("peer-image")
 		return
 	}
 	if !allowedAskpass(pid, s.pid) {
+		askpassDiagnostic("peer-parent")
 		return
 	}
 	ch := channel(c)
 	ch.SetReadDeadline(time.Now().Add(5 * time.Second))
 	m, e := ch.read()
 	if e != nil || m.Type != "prompt" || len(m.Prompt) > 8192 {
+		askpassDiagnostic("prompt-frame")
 		return
 	}
 	ch.SetReadDeadline(time.Time{})
@@ -148,6 +195,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 		if s.child != nil {
 			s.child.Kill()
 		}
+		askpassDiagnostic("canceled-before-answer")
 		ch.send(Message{Reply: &Reply{Canceled: true}})
 		return
 	}
@@ -165,6 +213,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 			if s.child != nil {
 				s.child.Kill()
 			}
+			askpassDiagnostic("log-marker-timeout")
 			s.mu.Lock()
 			s.canceled = true
 			s.mu.Unlock()
@@ -188,6 +237,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 	s.mu.Unlock()
 	answer, e := s.rpc.request(Message{Type: "ask", Target: s.target, Fingerprint: st.Fingerprint, Verified: st.Verified, Kind: kind, Prompt: m.Prompt, Failed: failed}, 4*time.Minute)
 	if e != nil || answer.Reply == nil {
+		askpassDiagnostic("broker-reply")
 		answer.Reply = &Reply{Canceled: true}
 	}
 	if answer.Reply.Canceled {
@@ -246,7 +296,7 @@ func runSSH(dir string, cfg Config, args []string) int {
 	}
 	defer l.Close()
 	s := &authSession{rpc: rpc, target: target, ready: make(chan struct{})}
-	a := quietArgs(args)
+	a := quietArgs(args, cfg.LogVerbose)
 	cmd := exec.Command(cfg.RealSSH, a...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -321,16 +371,19 @@ func runAskpass(dir string, args []string) int {
 	}
 	c, e := dialVerified(p, filepath.Join(dir, executableName("ssh")), 3*time.Second)
 	if e != nil {
+		askpassDiagnostic("client-connect")
 		return 1
 	}
 	defer c.Close()
 	ch := channel(c)
 	ch.SetReadDeadline(time.Now().Add(4 * time.Minute))
 	if ch.send(Message{Type: "prompt", Prompt: args[0], Kind: os.Getenv("SSH_ASKPASS_PROMPT")}) != nil {
+		askpassDiagnostic("client-prompt-write")
 		return 1
 	}
 	m, e := ch.read()
 	if e != nil || m.Reply == nil || m.Reply.Canceled || len(m.Reply.Value) > 8192 || strings.ContainsAny(m.Reply.Value, "\x00\r\n") {
+		askpassDiagnostic("client-answer")
 		return 1
 	}
 	fmt.Fprintln(os.Stdout, m.Reply.Value)

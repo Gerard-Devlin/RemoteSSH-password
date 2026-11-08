@@ -61,7 +61,7 @@ Use [Microsoft's publishing guide](https://code.visualstudio.com/api/working-wit
 
 ## Validation scope
 
-This publisher change does not expand supported platforms, OpenSSH builds, authentication modes, or the tested VS Code baseline. The [candidate report](testing/2026-11-07.md#100-release-candidate) distinguishes loopback/mocked-API checks from real-host UI and SecretStorage acceptance.
+This publisher change does not expand supported platforms, authentication modes, or the tested VS Code baseline. The [candidate report](testing/2026-11-09.md) distinguishes local API checks, real OpenSSH build coverage, and remaining real-host acceptance.
 
 ## One-time automatic publishing setup
 

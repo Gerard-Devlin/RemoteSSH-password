@@ -829,7 +829,8 @@ try {
     p.kill();
   }
   await fs.writeFile(
-    path.join(root, 'artifacts', 'extension-results-' + locale + '.json'),
+    process.env.SSHPM_EXTENSION_RESULT ||
+      path.join(root, 'artifacts', 'extension-results-' + locale + '.json'),
     JSON.stringify(
       {
         timestamp: new Date().toISOString(),

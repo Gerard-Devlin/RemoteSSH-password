@@ -5,8 +5,8 @@ import "strings"
 // Preserve transport options, but own diagnostic verbosity before starting SSH.
 // QUIET suppresses server-provided authentication banners; only selected local
 // log callsites are enabled. No files are used for the log stream.
-func windowsQuietArgs(args []string) []string {
-	out := []string{"-q", "-o", "LogLevel=QUIET", "-o", "LogVerbose=*:verify_host_key():1549*,*:check_host_key():1131*,*:check_host_key():1133*,*:check_host_key():1300*,*:ssh_userauth2():501*,*:authmethod_get():2375*,*:authmethod_get():2365*,*:userauth_passwd():*,*:input_userauth_info_req():2017*,*:input_userauth_failure():653*,*:ssh_packet_read_poll2():1664*,*:read_passphrase():*,*:warn_changed_key():*,*:ssh_connect_direct():*"}
+func windowsQuietArgs(args []string, logVerbose string) []string {
+	out := []string{"-q", "-o", "LogLevel=QUIET", "-o", "LogVerbose=" + logVerbose}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" || !strings.HasPrefix(a, "-") || a == "-" {

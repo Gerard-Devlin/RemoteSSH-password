@@ -5,11 +5,19 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { SetupManager } from '../setup';
 import { SettingSnapshot } from '../settings';
+import { windowsSSHProfileById } from '../compatibility';
+const systemProfile = windowsSSHProfileById('system-9.5p2');
+assert.ok(systemProfile);
 async function fixture(platform: 'win32' | 'darwin' = 'win32') {
   const suffix = platform === 'win32' ? '.exe' : '';
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sshpm-setup-'));
   const extension = path.join(root, 'extension'),
-    storage = path.join(root, 'storage');
+    storage = path.join(
+      root,
+      'User',
+      'globalStorage',
+      'devlin.remote-ssh-password-memory',
+    );
   await fs.mkdir(path.join(extension, 'bin'), { recursive: true });
   for (const file of ['ssh', 'scp', 'askpass', 'broker'].map(
     (name) => name + suffix,
@@ -35,7 +43,7 @@ async function fixture(platform: 'win32' | 'darwin' = 'win32') {
     platform,
     extensionPath: extension,
     version: '1.0.0',
-    validateSSH: async () => {},
+    validateSSH: async () => (platform === 'win32' ? systemProfile : undefined),
     secureDirectory: async () => {},
     adapter: {
       read: () => ({ ...settings }),
@@ -103,12 +111,19 @@ test('fresh activation automatically deploys adjacent helpers and updates settin
     await fs.readFile(path.join(directory, 'recovery.json'), 'utf8'),
   );
   assert.deepEqual(recovery.original, h.original);
+  const bridge = JSON.parse(
+    await fs.readFile(path.join(directory, 'bridge.json'), 'utf8'),
+  );
+  assert.equal(bridge.sshProfile, 'system-9.5p2');
+  assert.equal(bridge.logVerbose, systemProfile.logVerbose);
+  assert.ok(await fs.stat(path.join(h.extension, 'uninstall-v1.json')));
 });
 test('explicit disable survives another activation and explicit enable resumes', async () => {
   const h = await fixture();
   await h.manager().ensure();
   await h.manager().disable();
   assert.deepEqual(h.settings, h.original);
+  await assert.rejects(fs.stat(path.join(h.extension, 'uninstall-v1.json')));
   assert.equal(await h.manager().ensure(), 'disabled');
   assert.deepEqual(h.settings, h.original);
   assert.equal(await h.manager().ensure(true), 'ready');
@@ -138,7 +153,7 @@ test('workspace override suspends only that window', async () => {
 test('missing old local-tools helper is recovered automatically', async () => {
   const h = await fixture();
   const old = path.join(
-    h.root,
+    path.dirname(h.storage),
     'local-tools.remote-ssh-password-memory',
     'bridge-v1',
     'ssh.exe',

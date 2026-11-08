@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { TESTED_SSH_SHA256 } = require('../dist/compatibility.js');
+const { WINDOWS_SSH_PROFILES } = require('../dist/compatibility.js');
 let actual = 'unavailable';
 if (process.platform === 'win32' && process.env.WINDIR) {
   try {
@@ -19,7 +19,9 @@ if (process.platform === 'win32' && process.env.WINDIR) {
     if (!['ENOENT', 'EACCES'].includes(error.code)) throw error;
   }
 }
-let supported = actual === TESTED_SSH_SHA256;
+let supported = WINDOWS_SSH_PROFILES.some(
+  (profile) => profile.sha256 === actual,
+);
 if (process.platform === 'darwin') {
   const { spawnSync } = await import('node:child_process');
   const result = spawnSync('/usr/bin/ssh', ['-V'], { encoding: 'utf8' });

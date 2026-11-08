@@ -21,12 +21,13 @@ export function targetOptions(target) {
 }
 export const suffix = process.platform === 'win32' ? '.exe' : '';
 export const realSSH =
-  process.platform === 'win32'
+  process.env.SSHPM_REAL_SSH ||
+  (process.platform === 'win32'
     ? path.join(
         process.env.WINDIR || 'C:\\Windows',
         'System32',
         'OpenSSH',
         'ssh.exe',
       )
-    : '/usr/bin/ssh';
+    : '/usr/bin/ssh');
 export const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null';

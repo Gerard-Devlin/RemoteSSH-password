@@ -142,26 +142,87 @@ func TestPipeName(t *testing.T) {
 
 func TestTaggedSuccess(t *testing.T) {
 	line := "C:\\\\__w\\\\1\\\\s\\\\sshconnect2.c:ssh_userauth2():501 (pid=23776): Authenticated to 127.0.0.1 ([127.0.0.1]:11427) using \"password\"."
-	m := taggedLog.FindStringSubmatch(line)
-	if m == nil {
+	m, ok := parseTaggedLog(line)
+	if !ok {
 		t.Fatal("no match")
 	}
 	t.Logf("parts=%q", m)
 	s := AuthState{Verified: true, Accepted: true}
-	s.line(m[5])
+	s.line(m.body)
 	if !s.Success {
 		t.Fatal("not success")
 	}
 }
 
+func TestTaggedTruncatedWindowsSourceNames(t *testing.T) {
+	for _, line := range []string{
+		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconn:verify_host_key():1506 (pid=23776): Server host key: ssh-ed25519 SHA256:test`,
+		`debug1: C:\\__w\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconnect.:check_host_key():1295 (pid=23776): Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.`,
+		`C:\\__w\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconnect2:ssh_userauth2():489 (pid=23776): Authenticated to 127.0.0.1 ([127.0.0.1]:2222) using "password".`,
+		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\readpas:read_passphrase():175 (pid=23776): requested to askpass`,
+		`debug3: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\packet.:ssh_packet_read_poll2():1664 (pid=23776): receive packet: type 52`,
+	} {
+		if _, ok := parseTaggedLog(line); !ok {
+			t.Fatalf("truncated Windows source log not parsed: %s", line)
+		}
+	}
+	line := `debug1: C:\\__w\\1\\s\\readpass.c:read_passphrase():176 (bin=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\openssh-10.0p: requested to askpass`
+	m, ok := parseTaggedLog(line)
+	if !ok || m.pid != "" || m.function != "read_passphrase" || m.body != "requested to askpass" {
+		t.Fatalf("truncated bin tag not parsed: %+v", m)
+	}
+}
+
+func TestTaggedLogVisibility(t *testing.T) {
+	if visibleTaggedBody("authmethod_get", "start over, passed a different list password,publickey") {
+		t.Fatal("server authentication list would be exposed")
+	}
+	if !visibleTaggedBody("authmethod_get", "Next authentication method: password") {
+		t.Fatal("selected authentication method was hidden")
+	}
+	if visibleTaggedBody("ssh_packet_read_poll2", "receive packet: type 52") {
+		t.Fatal("numeric packet diagnostic would be exposed")
+	}
+	if visibleTaggedBody("input_userauth_info_req", "server supplied instruction") {
+		t.Fatal("server keyboard-interactive instruction would be exposed")
+	}
+	if !visibleTaggedBody("input_userauth_info_req", "num_prompts 1") {
+		t.Fatal("keyboard-interactive prompt count was hidden")
+	}
+	if visibleTaggedBody("input_userauth_failure", "Authentications that can continue: password,publickey") {
+		t.Fatal("server authentication list would be exposed")
+	}
+	if !visibleTaggedBody("input_userauth_failure", `Authenticated using "password" with partial success.`) {
+		t.Fatal("partial-success marker was hidden")
+	}
+}
+
 func TestQuietArgs(t *testing.T) {
 	a := []string{"-vT", "-oLogLevel=DEBUG3", "-o", "LogVerbose=*", "-p22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}
-	v := windowsQuietArgs(a)
+	profile, ok := windowsOpenSSHProfileFor(
+		"98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8",
+	)
+	if !ok {
+		t.Fatal("missing system OpenSSH profile")
+	}
+	v := windowsQuietArgs(a, profile.LogVerbose)
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
 	}
-	if strings.Contains(v[4], "ssh_userauth2():*,") || strings.Contains(v[4], "authmethod_get():*,") {
-		t.Fatal("unsafe wide logging")
+}
+
+func TestWindowsOpenSSHProfiles(t *testing.T) {
+	expected := map[string]string{
+		"98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8": "system-9.5p2",
+		"e41e50a22dffeae8bb13bce4cb47b6c4aa0de4cdecbd62ef79d5046adc05a8b1": "openssh-9.5p1",
+		"edb93b2139ee59fbee2b8dc0ba9f929d7ecda64d47d61eb1029de1413dff3224": "openssh-9.8p2",
+		"6890c128c86cc2c38aad9fcb32a82b851ff3d38c714a1f656b8e445d7cd5e1c6": "openssh-10.0p2",
+	}
+	for hash, id := range expected {
+		profile, ok := windowsOpenSSHProfileFor(hash)
+		if !ok || profile.ID != id || !strings.Contains(profile.LogVerbose, "ssh_packet_read_poll2():") {
+			t.Fatalf("invalid profile for %s: %+v", hash, profile)
+		}
 	}
 }
 func TestSuccessNeedsPacket(t *testing.T) {

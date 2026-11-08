@@ -149,6 +149,14 @@ test('VS Code compatibility floor and compiled API types stay aligned', async ()
   );
 });
 
+test('uninstall recovery hook and its bundled runtime are declared', async () => {
+  assert.equal(
+    manifest.scripts['vscode:uninstall'],
+    'node ./dist/uninstall.js',
+  );
+  assert.ok((await read('.vscodeignore')).includes('\nuninstall-v1.json\n'));
+});
+
 test('Marketplace icon and original README artwork use independent assets', async () => {
   assert.equal(manifest.icon, 'media/icon.png');
   const icon = await fs.readFile(path.join(root, manifest.icon));

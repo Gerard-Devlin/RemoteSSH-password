@@ -23,8 +23,11 @@ func configureLog(cmd *exec.Cmd, writer *os.File) {
 	cmd.Stderr = os.Stderr
 	cmd.Args = append([]string{cmd.Path, "-E", writer.Name()}, cmd.Args[1:]...)
 }
-func quietArgs(args []string) []string {
-	out := windowsQuietArgs(args)
+func quietArgs(args []string, _ string) []string {
+	out := windowsQuietArgs(
+		args,
+		"*:verify_host_key():*,*:check_host_key():*,*:ssh_userauth2():*,*:userauth_passwd():*,*:input_userauth_info_req():*,*:input_userauth_failure():*,*:ssh_packet_read_poll2():*,*:read_passphrase():*,*:warn_changed_key():*,*:ssh_connect_direct():*",
+	)
 	out[4] = "LogVerbose=*:verify_host_key():*,*:check_host_key():*,*:ssh_userauth2():*,*:userauth_passwd():*,*:input_userauth_info_req():*,*:ssh_packet_read_poll2():*,*:read_passphrase():*,*:warn_changed_key():*,*:ssh_connect_direct():*"
 	return out
 }

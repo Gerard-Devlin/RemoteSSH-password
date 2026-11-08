@@ -9,17 +9,20 @@
 | Platform             | Windows x64 and macOS arm64/x64; local UI extension host only.                         |
 | VS Code              | Minimum 1.73.0; compiled against that API.                                             |
 | Microsoft Remote-SSH | Current integration inspected at 0.128.0. VS Code selects the newest compatible build. |
-| OpenSSH              | Windows: exact 9.5p2 hash below. macOS: OpenSSH 9.0+ with LogVerbose support.          |
+| OpenSSH              | Windows: exact profiles below. macOS: OpenSSH 9.0+ with LogVerbose support.            |
 | Authentication       | Direct SSH password, or a verified single Password request using keyboard-interactive. |
 | Language             | English fallback and Simplified Chinese (`zh-cn`).                                     |
 
 The 1.73.0 floor is the release that made `vscode.l10n` available to extensions. The extension and its type definitions intentionally target that API floor, so newer editor APIs are not required. Remote-SSH has its own editor requirement and may require a newer VS Code release; Marketplace extension resolution installs the newest Remote-SSH version compatible with the running editor.
 
-Supported real `ssh.exe` SHA256:
+Supported Windows `ssh.exe` profiles:
 
-```text
-98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8
-```
+| Profile                      | SHA256                                                             |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Windows system OpenSSH 9.5p2 | `98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8` |
+| Win32-OpenSSH 9.5p1          | `e41e50a22dffeae8bb13bce4cb47b6c4aa0de4cdecbd62ef79d5046adc05a8b1` |
+| Win32-OpenSSH 9.8p2          | `edb93b2139ee59fbee2b8dc0ba9f929d7ecda64d47d61eb1029de1413dff3224` |
+| Win32-OpenSSH 10.0p2         | `6890c128c86cc2c38aad9fcb32a82b851ff3d38c714a1f656b8e445d7cd5e1c6` |
 
 Inspect an existing system binary with:
 
@@ -27,7 +30,7 @@ Inspect an existing system binary with:
 Get-FileHash -LiteralPath C:\Windows\System32\OpenSSH\ssh.exe -Algorithm SHA256
 ```
 
-Do not obtain an untrusted executable just to match this value. A different build needs source-callsite validation and the full integration suite before it can be added to the allowlist.
+Do not obtain an untrusted executable just to match these values. Each profile binds the executable hash to a version marker and an exact LogVerbose callsite set. A different build needs source-callsite validation and the full integration suite before it can be added to the allowlist.
 
 ## macOS
 
@@ -35,11 +38,11 @@ Choose `darwin-arm64` for Apple Silicon VS Code or `darwin-x64` for Intel VS Cod
 
 macOS uses current-user-only Unix sockets and checks kernel peer UID/PID and executable paths through libproc. SSH diagnostic output streams through a private FIFO, separated from server stderr. No diagnostic text is written to a regular file. Server-controlled method-list log callsites are disabled. After any keyboard-interactive password rejection or partial continuation, remaining prompts in that connection stay manual; reconnect to remember a replacement fixed password.
 
-## Why the exact Windows build matters
+## Why the exact Windows builds matter
 
 Unmodified OpenSSH does not expose a public password-authentication success event. This release uses selected, tested local LogVerbose callsites, a success packet, the active child PID, and host-verification state. It does not treat a zero exit code or arbitrary stderr text as authentication success.
 
-Patch-specific source locations can change independently of the displayed version. The Windows TypeScript and Go paths therefore pin the binary hash. System updates may cause the bridge to revert to ordinary authentication until the new build is validated. This is intentional.
+Patch-specific source locations can change independently of the displayed version. `native/windows-openssh.json` is the source of truth for exact executable hashes and callsite profiles. Generated TypeScript and embedded Go data therefore reject unknown hashes and profile/filter mismatches. System updates may still cause the bridge to revert to ordinary authentication until that new build is validated. This is intentional.
 
 ## Unsupported and manual modes
 

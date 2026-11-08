@@ -32,17 +32,18 @@ package.nls*.json      Localized manifest contributions
 
 ## Checks
 
-| Command                                         | Purpose                                                                                                                     |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `npm run check`                                 | Prettier check, TypeScript compile/unit tests, localization/docs checks, Go unit tests.                                     |
-| `npm run test:integration`                      | Real supported local OpenSSH against a loopback SSH/SFTP fixture.                                                           |
-| `npm run test:extension`                        | Actual compiled extension/native bridge with mocked VS Code API, UI and SecretStorage; runs English and Chinese separately. |
-| `npm run test:host -- -Code <path-to-Code.exe>` | Isolated real VS Code activation and SecretStorage checks; needs installed test dependency versions.                        |
-| `npm run test:race`                             | Go race detector; requires GCC on PATH.                                                                                     |
-| `go vet ./...` in `native/`                     | Native static analysis.                                                                                                     |
-| `npm run format`                                | Format JS/TS/JSON/Markdown/YAML and Go source.                                                                              |
-| `npm run package`                               | Build and package a VSIX for the current platform (`-- --target darwin-x64` selects another target).                        |
-| `npm run verify:package`                        | Exact file inventory, source hashes, target and PE x64 checks.                                                              |
+| Command                                         | Purpose                                                                                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                                 | Prettier check, TypeScript compile/unit tests, localization/docs checks, Go unit tests.                                               |
+| `npm run test:integration`                      | Real supported local OpenSSH against a loopback SSH/SFTP fixture.                                                                     |
+| `npm run test:extension`                        | Actual compiled extension/native bridge with mocked VS Code API, UI and SecretStorage; runs English and Chinese separately.           |
+| `npm run test:windows-builds`                   | Windows-only: downloads each official supported Win32-OpenSSH archive, verifies hashes, and runs loopback plus extension-entry tests. |
+| `npm run test:host -- -Code <path-to-Code.exe>` | Isolated real VS Code activation and SecretStorage checks; needs installed test dependency versions.                                  |
+| `npm run test:race`                             | Go race detector; requires GCC on PATH.                                                                                               |
+| `go vet ./...` in `native/`                     | Native static analysis.                                                                                                               |
+| `npm run format`                                | Format JS/TS/JSON/Markdown/YAML and Go source.                                                                                        |
+| `npm run package`                               | Build and package a VSIX for the current platform (`-- --target darwin-x64` selects another target).                                  |
+| `npm run verify:package`                        | Exact file inventory, source hashes, target and PE x64 checks.                                                                        |
 
 See [Testing](docs/testing.md) for isolation details, expected evidence, and manual acceptance. A mocked API test is not real-host UI verification.
 
