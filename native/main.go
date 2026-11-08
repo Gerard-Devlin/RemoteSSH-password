@@ -10,12 +10,10 @@ import (
 	"strings"
 )
 
-// LogVerbose source locations are verified for this exact Windows binary.
-// Unknown or updated binaries must fall back, never guess authentication success.
-const testedSSHHash = "98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8"
-
 type Config struct {
 	RealSSHHash string `json:"realSSHHash"`
+	SSHProfile  string `json:"sshProfile"`
+	LogVerbose  string `json:"logVerbose"`
 	RealSSH     string `json:"realSSH"`
 	RealSCP     string `json:"realSCP"`
 	Enabled     bool   `json:"enabled"`
@@ -81,6 +79,8 @@ func resolveRealPrograms(c Config) Config {
 		c.RealSSH = nested.RealSSH
 		c.RealSCP = nested.RealSCP
 		c.RealSSHHash = nested.RealSSHHash
+		c.SSHProfile = nested.SSHProfile
+		c.LogVerbose = nested.LogVerbose
 		c.Enabled = c.Enabled && nested.Enabled
 	}
 	return defaultConfig()

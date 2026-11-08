@@ -41,7 +41,10 @@ func bindJob(j windows.Handle, pid uint32) error {
 func executableName(name string) string { return name + ".exe" }
 func defaultSSH() string                { return filepath.Join(os.Getenv("WINDIR"), "System32", "OpenSSH", "ssh.exe") }
 func supportedSSH(c Config) bool {
-	return c.RealSSHHash == testedSSHHash && fileHash(c.RealSSH) == testedSSHHash
+	profile, ok := windowsOpenSSHProfileFor(c.RealSSHHash)
+	return ok && c.LogVerbose == profile.LogVerbose &&
+		(c.SSHProfile == "" || c.SSHProfile == profile.ID) &&
+		fileHash(c.RealSSH) == profile.SHA256
 }
 func configureLog(cmd *exec.Cmd, writer *os.File) { cmd.Stderr = writer }
 func startSSH(cmd *exec.Cmd) (func(), error) {
@@ -75,7 +78,9 @@ func allowedAskpass(pid, sshPID uint32) bool {
 	}
 	return false
 }
-func quietArgs(args []string) []string { return windowsQuietArgs(args) }
+func quietArgs(args []string, logVerbose string) []string {
+	return windowsQuietArgs(args, logVerbose)
+}
 
 func updatePlatformState(st *AuthState, function, body string)  {}
 func preparePrompt(st *AuthState, prompt string, target Target) {}

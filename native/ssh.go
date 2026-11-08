@@ -246,7 +246,7 @@ func runSSH(dir string, cfg Config, args []string) int {
 	}
 	defer l.Close()
 	s := &authSession{rpc: rpc, target: target, ready: make(chan struct{})}
-	a := quietArgs(args)
+	a := quietArgs(args, cfg.LogVerbose)
 	cmd := exec.Command(cfg.RealSSH, a...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

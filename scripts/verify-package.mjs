@@ -47,6 +47,7 @@ const packaged = JSON.parse(entries.get('extension/package.json'));
 for (const key of ['name', 'publisher', 'version'])
   assert.equal(packaged[key], metadata[key]);
 assert.equal(packaged.engines.vscode, metadata.engines.vscode);
+assert.equal(packaged.scripts['vscode:uninstall'], 'node ./dist/uninstall.js');
 assert.ok(manifest.includes('Version="' + metadata.version + '"'));
 const expectedHelpers = ['ssh', 'scp', 'askpass', 'broker']
   .map((name) => 'extension/bin/' + name + suffix)
@@ -61,6 +62,7 @@ const expectedEntries = [
   'extension/THIRD-PARTY-NOTICES.txt',
   ...expectedHelpers,
   'extension/changelog.md',
+  'extension/dist/compatibility.generated.js',
   'extension/dist/compatibility.js',
   'extension/dist/core.js',
   'extension/dist/extension.js',
@@ -68,6 +70,7 @@ const expectedEntries = [
   'extension/dist/platform.js',
   'extension/dist/settings.js',
   'extension/dist/setup.js',
+  'extension/dist/uninstall.js',
   'extension/docs/README.zh-CN.md',
   'extension/docs/architecture.md',
   'extension/docs/compatibility.md',

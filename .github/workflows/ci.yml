@@ -71,6 +71,9 @@ jobs:
       - name: English and Chinese extension-entry integration (mocked VS Code API)
         if: steps.ssh.outputs.supported == 'true'
         run: npm run test:extension
+      - name: Official Win32-OpenSSH build matrix
+        if: matrix.target == 'win32-x64'
+        run: npm run test:windows-builds
       - name: VS Code 1.73 compatibility smoke test
         if: matrix.target == 'darwin-arm64'
         run: npm run test:vscode-compat
@@ -89,7 +92,9 @@ jobs:
             artifacts/package-verification-*.json
             artifacts/SHA256SUMS-*.txt
             artifacts/integration-results.json
+            artifacts/integration-results-*.json
             artifacts/extension-results-en.json
             artifacts/extension-results-zh-cn.json
+            artifacts/extension-results-*.json
           if-no-files-found: error
           retention-days: 14

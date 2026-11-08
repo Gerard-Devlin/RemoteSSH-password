@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Gerard-Devlin/RemoteSSH-password/ci.yml?branch=main&amp;style=flat-square&amp;label=CI" alt="CI status"></a>
-  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.1.0-blue?style=flat-square" alt="Version 1.1.0"></a>
+  <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/releases"><img src="https://img.shields.io/badge/version-1.2.0-blue?style=flat-square" alt="Version 1.2.0"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/stargazers"><img src="https://img.shields.io/github/stars/Gerard-Devlin/RemoteSSH-password?style=social" alt="GitHub stars"></a>
   <a href="https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Gerard-Devlin/RemoteSSH-password?style=flat-square" alt="MIT license"></a>
 </p>
@@ -29,7 +29,7 @@
 
 A Windows x64 and macOS companion extension for [Microsoft Remote-SSH](https://code.visualstudio.com/docs/remote/ssh). Enter a password in VS Code, choose whether to remember it, and reconnect without typing it again. OpenSSH still handles the connection, server identity checks, terminals, and forwarding.
 
-> **Version 1.1.0.** Includes Windows x64 and separate macOS Apple Silicon / Intel packages. The minimum VS Code API is 1.73.0, and the extension is compiled against that API. Use the newest Microsoft Remote-SSH release compatible with your VS Code version. See the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [current test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-09.md) for validation coverage.
+> **Version 1.2.0.** Includes Windows x64 and separate macOS Apple Silicon / Intel packages. The minimum VS Code API is 1.73.0, and the extension is compiled against that API. Use the newest Microsoft Remote-SSH release compatible with your VS Code version. See the [compatibility requirements](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md) and [current test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-09.md) for validation coverage.
 
 ## Features
 
@@ -41,7 +41,7 @@ A Windows x64 and macOS companion extension for [Microsoft Remote-SSH](https://c
 - **Recover from rejection.** A saved password is offered automatically at most once per connection. A rejected password prompts for a replacement.
 - **Stay inside VS Code.** Native masked input, host-trust confirmation, credential management, and diagnostics. English and Simplified Chinese follow the display language.
 - **Keep the Remote-SSH workflow.** SSH and adjacent SCP bridges support the connection and upload paths without modifying Microsoft's extension.
-- **Restore settings.** Disabling restores settings only when they still contain values installed by this extension.
+- **Restore settings.** Disabling, or a normal uninstall followed by a full restart, restores only values still installed by this extension.
 
 ## Quick start
 
@@ -49,7 +49,7 @@ A Windows x64 and macOS companion extension for [Microsoft Remote-SSH](https://c
 
 - Windows **x64** or macOS **Apple Silicon / Intel**, using the local VS Code UI extension host.
 - VS Code **1.73.0+** with the newest compatible Microsoft Remote-SSH release; the current integration was inspected at **0.128.0**.
-- Windows OpenSSH **9.5p2** with the exact supported binary hash, or macOS OpenSSH **9.0+** with `LogVerbose` support.
+- A listed, exact Windows OpenSSH build or macOS OpenSSH **9.0+** with `LogVerbose` support.
 - A direct SSH connection using a fixed password. Jump hosts, OTP, and key-passphrase memory are outside this release's password-memory scope.
 
 See [supported builds and fallback behavior](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/compatibility.md). The native bridges are unsigned local builds. This project is independent of Microsoft.
@@ -63,7 +63,7 @@ If the old preview has already been removed and Enable reports its helper path a
 ### Install and connect
 
 1. Install [Remote SSH Password Memory](https://marketplace.visualstudio.com/items?itemName=Devlin.remote-ssh-password-memory) from the VS Code Marketplace. In the Extensions view, search for `Devlin.remote-ssh-password-memory` and check the publisher is **Devlin**.
-2. Ensure Microsoft Remote-SSH is installed. Choose the package matching your local VS Code architecture: `win32-x64`, `darwin-arm64` (Apple Silicon), or `darwin-x64` (Intel). For manual installation, download `remote-ssh-password-memory-1.1.0-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
+2. Ensure Microsoft Remote-SSH is installed. Choose the package matching your local VS Code architecture: `win32-x64`, `darwin-arm64` (Apple Silicon), or `darwin-x64` (Intel). For manual installation, download `remote-ssh-password-memory-1.2.0-win32-x64.vsix` from [GitHub Releases](https://github.com/Gerard-Devlin/RemoteSSH-password/releases) and choose **Install from VSIX…**.
 3. Password memory starts automatically in the local window. No setup command is needed.
 4. Use **Remote-SSH: Connect to Host…** as usual. Verify any first-time server fingerprint before accepting it.
 5. Enter the password in the masked VS Code input. Choose **Remember on This Device** or **Use Once**.
@@ -72,7 +72,7 @@ If the old preview has already been removed and Enable reports its helper path a
 Or install a locally built package from the repository root:
 
 ```powershell
-code --install-extension ./artifacts/remote-ssh-password-memory-1.1.0-win32-x64.vsix
+code --install-extension ./artifacts/remote-ssh-password-memory-1.2.0-win32-x64.vsix
 ```
 
 Password memory starts automatically after installation and local activation. If you explicitly turn it off, it stays off until you choose to enable it again. Marketplace installations receive extension updates through VS Code, subject to your automatic-update settings. Manual VSIX packages remain available from GitHub Releases. The extension collects no telemetry.
@@ -108,7 +108,7 @@ Enabling writes exactly two user settings:
 
 Original values are recorded in local state and a password-free `recovery.json`. Other settings and your SSH config remain intact.
 
-Before uninstalling, forget credentials you want removed, then run **Disable and Restore SSH Settings**. Disabling preserves saved credentials. Direct uninstallation relies on the retained bridge for ordinary OpenSSH fallback; manual deletion of global storage can break that path. Follow the [recovery instructions](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/troubleshooting.md#restore-remote-ssh-after-removal) if necessary.
+Before uninstalling, forget credentials you want removed. A normal uninstall runs the registered `vscode:uninstall` recovery hook on the next full VS Code restart, restoring only unchanged extension-owned SSH settings while preserving JSONC comments and later user edits. Until that restart, the retained bridge keeps ordinary OpenSSH usable. Explicit **Disable and Restore SSH Settings** remains available for immediate restoration. Follow the [recovery instructions](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/troubleshooting.md#restore-remote-ssh-after-removal) if extension or global-storage files were manually deleted.
 
 ## Security and scope
 
@@ -124,7 +124,7 @@ Direct SSH passwords and a verified, single interactive Password request can be 
 | [Troubleshooting](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/troubleshooting.md)             | Diagnostics, password failures, disable/uninstall, and manual recovery. |
 | [Architecture](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/architecture.md)                   | Extension, broker, SSH/SCP, and ASKPASS responsibilities.               |
 | [Testing](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing.md)                             | Test layers, commands, and manual acceptance checklist.                 |
-| [Latest local test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-07.md) | Reproducible evidence and remaining gaps.                               |
+| [Latest local test report](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/testing/2026-11-09.md) | Reproducible evidence and remaining gaps.                               |
 | [Contributing](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CONTRIBUTING.md)                        | Development, translations, repository layout, and release checklist.    |
 | [UI text guide](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/docs/ui-text.md)                       | Reviewed screens, shared terms, and localization conventions.           |
 | [Changelog](https://github.com/Gerard-Devlin/RemoteSSH-password/blob/main/CHANGELOG.md)                              | Version history.                                                        |

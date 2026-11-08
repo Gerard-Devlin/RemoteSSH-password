@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { TESTED_SSH_SHA256 } from './compatibility';
+import { type WindowsOpenSSHProfile, windowsSSHProfile } from './compatibility';
 import { defaultSSH, executableName } from './platform';
 import {
   SettingSnapshot,
@@ -12,6 +12,7 @@ import {
   selectSSHSettings,
   restoration,
 } from './settings';
+import { removeUninstallState, writeUninstallState } from './uninstall';
 const execute = promisify(execFile);
 const same = (a?: string, b?: string) =>
   a === b ||
@@ -53,7 +54,7 @@ export interface SetupOptions {
     start(directory: string): Promise<void>;
     stop(): void;
   };
-  validateSSH?: (ssh: string) => Promise<void>;
+  validateSSH?: (ssh: string) => Promise<WindowsOpenSSHProfile | void>;
   secureDirectory?: (directory: string) => Promise<void>;
 }
 export class SetupError extends Error {
@@ -189,21 +190,25 @@ export class SetupManager {
         await fs.unlink(lock).catch(() => {});
     }
   }
-  private async validate(realSSH: string) {
-    if (this.options.validateSSH) return this.options.validateSSH(realSSH);
+  private async validate(
+    realSSH: string,
+  ): Promise<WindowsOpenSSHProfile | undefined> {
+    if (this.options.validateSSH)
+      return (await this.options.validateSSH(realSSH)) || undefined;
     try {
       const hash = createHash('sha256')
         .update(await fs.readFile(realSSH))
         .digest('hex');
-      if (this.platform === 'win32' && hash !== TESTED_SSH_SHA256)
-        throw new Error();
       const version = await execute(realSSH, ['-V'], {
         windowsHide: true,
         timeout: 5000,
       });
       const label = version.stdout + version.stderr;
       if (this.platform === 'win32') {
-        if (!label.includes('OpenSSH_for_Windows_9.5p2')) throw new Error();
+        const profile = windowsSSHProfile(hash, label);
+        if (!profile) throw new Error();
+        await fs.access(path.join(path.dirname(realSSH), this.file('scp')));
+        return profile;
       } else {
         const match = /^OpenSSH_(\d+)\.(\d+)p\d+/m.exec(label);
         if (!match || Number(match[1]) < 9) throw new Error();
@@ -221,9 +226,27 @@ export class SetupManager {
         );
       }
       await fs.access(path.join(path.dirname(realSSH), this.file('scp')));
+      return undefined;
     } catch {
       throw new SetupError('unsupported-ssh');
     }
+  }
+  private async rememberUninstall(
+    bridgePath: string,
+    original: SettingSnapshot,
+  ) {
+    await writeUninstallState({
+      storage: this.options.storage,
+      extensionPath: this.options.extensionPath,
+      bridgePath,
+      original,
+    }).catch(() => {});
+  }
+  private async forgetUninstall() {
+    await removeUninstallState({
+      storage: this.options.storage,
+      extensionPath: this.options.extensionPath,
+    });
   }
   async ensure(
     force = false,
@@ -337,16 +360,15 @@ export class SetupManager {
           : undefined,
         this.platform,
       );
-      await this.validate(selection.realSSH);
+      const sshProfile = await this.validate(selection.realSSH);
       const files = ['ssh', 'scp', 'askpass', 'broker'].map((name) =>
         this.file(name),
       );
       const sshHash =
-        this.platform === 'win32'
-          ? TESTED_SSH_SHA256
-          : createHash('sha256')
-              .update(await fs.readFile(selection.realSSH))
-              .digest('hex');
+        sshProfile?.sha256 ??
+        createHash('sha256')
+          .update(await fs.readFile(selection.realSSH))
+          .digest('hex');
       const payload = await Promise.all(
         files.map((file) =>
           fs.readFile(path.join(this.options.extensionPath, 'bin', file)),
@@ -387,6 +409,7 @@ export class SetupManager {
         current.useLocalServer === true
       ) {
         await adapter.start(directory);
+        await this.rememberUninstall(managedPath, selection.original);
         return 'ready';
       }
       const pending: Control = {
@@ -402,6 +425,8 @@ export class SetupManager {
         realSSH: selection.realSSH,
         realSCP: path.join(path.dirname(selection.realSSH), this.file('scp')),
         realSSHHash: sshHash,
+        sshProfile: sshProfile?.id,
+        logVerbose: sshProfile?.logVerbose,
         enabled: true,
       };
       await this.write(path.join(directory, 'bridge.json'), config);
@@ -427,6 +452,7 @@ export class SetupManager {
         attempted.add('useLocalServer');
         await adapter.write('useLocalServer', true);
         await this.write(this.controlPath, { ...pending, status: 'ready' });
+        await this.rememberUninstall(managedPath, selection.original);
         return 'ready';
       } catch (error) {
         adapter.stop();
@@ -485,6 +511,7 @@ export class SetupManager {
         const config = await this.read(file);
         if (config) await this.write(file, { ...config, enabled: false });
       }
+      await this.forgetUninstall();
     });
   }
 }

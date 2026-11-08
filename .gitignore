@@ -5,6 +5,7 @@ artifacts/
 .test-runtime/
 .test-host/
 .vscode-test/
+uninstall-v1.json
 *.log
 *.vsix
 .env

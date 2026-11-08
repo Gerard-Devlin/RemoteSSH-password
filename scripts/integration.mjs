@@ -1,6 +1,6 @@
 import { suffix, realSSH, nullDevice } from './platform.mjs';
 import os from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -10,6 +10,7 @@ import net from 'node:net';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { CredentialCore, keyFor } = require('../dist/core.js');
+const { windowsSSHProfile } = require('../dist/compatibility.js');
 const root = process.cwd(),
   dir = path.join(root, '.test-runtime', randomUUID());
 await fs.mkdir(dir, { recursive: true });
@@ -20,13 +21,26 @@ for (const n of [
   'broker' + suffix,
 ])
   await fs.copyFile(path.join(root, 'bin', n), path.join(dir, n));
+const realSSHHash = createHash('sha256')
+  .update(await fs.readFile(realSSH))
+  .digest('hex');
+let windowsProfile;
+if (process.platform === 'win32') {
+  const version = spawnSync(realSSH, ['-V'], { encoding: 'utf8' });
+  const label = (version.stdout || '') + (version.stderr || '');
+  windowsProfile = windowsSSHProfile(realSSHHash, label);
+  assert.ok(
+    windowsProfile,
+    'integration OpenSSH is not in the supported profile allowlist',
+  );
+}
 await fs.writeFile(
   path.join(dir, 'bridge.json'),
   JSON.stringify({
     realSSH,
-    realSSHHash: createHash('sha256')
-      .update(await fs.readFile(realSSH))
-      .digest('hex'),
+    realSSHHash,
+    sshProfile: windowsProfile?.id,
+    logVerbose: windowsProfile?.logVerbose,
     realSCP: path.join(path.dirname(realSSH), 'scp' + suffix),
     enabled: true,
   }),
@@ -769,7 +783,8 @@ try {
   }
   await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
   await fs.writeFile(
-    path.join(root, 'artifacts', 'integration-results.json'),
+    process.env.SSHPM_INTEGRATION_RESULT ||
+      path.join(root, 'artifacts', 'integration-results.json'),
     JSON.stringify(
       {
         timestamp: new Date().toISOString(),

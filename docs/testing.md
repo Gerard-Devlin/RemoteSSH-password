@@ -1,6 +1,6 @@
 # Testing
 
-[Back to README](../README.md) · [Latest local report](testing/2026-11-07.md)
+[Back to README](../README.md) · [Latest local report](testing/2026-11-09.md)
 
 ## Test layers
 
@@ -22,12 +22,15 @@ npm ci
 npm run check
 npm run test:integration
 npm run test:extension
+npm run test:windows-builds
 npm run test:race
 npm run package
 npm run verify:package
 ```
 
-Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-07.md).
+Run `go vet ./...` from `native/` as well. Race detection requires GCC. Dependencies and compiler versions are recorded in the [dated report](testing/2026-11-09.md).
+
+`test:windows-builds` is Windows-only and intentionally skips elsewhere. On `win32-x64` it downloads the official archives listed in `native/windows-openssh.json`, verifies both archive and executable hashes, confirms each version marker, and runs the real loopback plus English extension-entry suites against each profile.
 
 Loopback fixtures bind only to `127.0.0.1`. They use generated synthetic passwords and in-memory host keys, separate SSH config/known_hosts, and temporary SFTP data. They never connect to a user server or change real VS Code settings. Runtime fixture data remains in ignored directories for inspection; never upload it without reviewing metadata.
 
@@ -48,7 +51,7 @@ This checks automatic setup, commands, real encrypted interactive-password persi
 
 ## CI
 
-The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, loopback and bilingual extension-entry integration when the platform OpenSSH meets the contract, exact-inventory package verification, native architecture checks, and distribution receipts. A runner that cannot exercise a supported OpenSSH build says **not run** explicitly; it cannot silently become a successful integration claim.
+The three-platform workflow runs formatting, compilation, unit/localization/docs tests, native static analysis, loopback and bilingual extension-entry integration when the platform OpenSSH meets the contract, exact-inventory package verification, native architecture checks, and distribution receipts. Windows additionally downloads each official Win32-OpenSSH archive, verifies its archive and executable hashes, then runs the loopback and compiled-extension suites against every supported profile. A runner that cannot exercise a supported OpenSSH build says **not run** explicitly; it cannot silently become a successful integration claim.
 
 CI does not install or interact with a real VS Code host. See the repository’s Actions page for executed checks. The distribution workflow verifies package receipts before creating non-overwriting GitHub Release assets. Automatic main-branch previews are opt-in, while a stable release always requires the explicit manual workflow in the [publishing guide](marketplace.md#stable-releases). Merging a candidate without invoking distribution does not consume its version.
 
@@ -69,7 +72,7 @@ Use a controlled test server. Enter passwords only in VS Code's masked input. Re
 - [x] SCP/SFTP, PTY, and local forwarding work through the bridge with real OpenSSH.
 - [x] Changed host keys are rejected; later legitimate changes do not reuse the old fingerprint's password.
 - [x] Chinese and shell-special characters pass without shell escaping; sanitized output and runtime files contain no test secret.
-- [x] Disable restores only owned settings; direct disable/uninstall fallback is covered by isolated host and native tests.
+- [x] Disable restores only owned settings; the bundled `vscode:uninstall` hook preserves user edits and restores unchanged values after normal uninstall.
 - [x] Missing helper and global-state recovery paths are covered by automated setup tests.
 
 First installation on a brand-new external host, remote extension installation, and visually exhaustive OS-specific rendering remain Remote-SSH interoperability checks rather than password-memory release gates. The supported password-memory workflow above is closed for the 1.0.0 candidate.

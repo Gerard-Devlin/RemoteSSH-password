@@ -156,12 +156,33 @@ func TestTaggedSuccess(t *testing.T) {
 
 func TestQuietArgs(t *testing.T) {
 	a := []string{"-vT", "-oLogLevel=DEBUG3", "-o", "LogVerbose=*", "-p22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}
-	v := windowsQuietArgs(a)
+	profile, ok := windowsOpenSSHProfileFor(
+		"98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8",
+	)
+	if !ok {
+		t.Fatal("missing system OpenSSH profile")
+	}
+	v := windowsQuietArgs(a, profile.LogVerbose)
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
 	}
 	if strings.Contains(v[4], "ssh_userauth2():*,") || strings.Contains(v[4], "authmethod_get():*,") {
 		t.Fatal("unsafe wide logging")
+	}
+}
+
+func TestWindowsOpenSSHProfiles(t *testing.T) {
+	expected := map[string]string{
+		"98d447730047f5df91373e852d057928a921c3d1e89938700ab656ba84b19dc8": "system-9.5p2",
+		"e41e50a22dffeae8bb13bce4cb47b6c4aa0de4cdecbd62ef79d5046adc05a8b1": "openssh-9.5p1",
+		"edb93b2139ee59fbee2b8dc0ba9f929d7ecda64d47d61eb1029de1413dff3224": "openssh-9.8p2",
+		"6890c128c86cc2c38aad9fcb32a82b851ff3d38c714a1f656b8e445d7cd5e1c6": "openssh-10.0p2",
+	}
+	for hash, id := range expected {
+		profile, ok := windowsOpenSSHProfileFor(hash)
+		if !ok || profile.ID != id || !strings.Contains(profile.LogVerbose, "ssh_packet_read_poll2():") {
+			t.Fatalf("invalid profile for %s: %+v", hash, profile)
+		}
 	}
 }
 func TestSuccessNeedsPacket(t *testing.T) {

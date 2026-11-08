@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.2.0 — 2026-11-09
+
+- Support exact Windows OpenSSH compatibility profiles for the Windows system 9.5p2 build and official Win32-OpenSSH 9.5p1, 9.8p2, and 10.0p2 builds. Setup and the native bridge share the same generated hash/callsite allowlist; unknown or tampered profiles still fall back.
+- Add a Windows CI matrix that downloads each official archive, verifies both archive and executable SHA256 values, and runs real OpenSSH loopback plus compiled-extension tests against every supported build.
+- Add a `vscode:uninstall` recovery hook. It restores only unchanged `remote.SSH.path` and `remote.SSH.useLocalServer` values, preserves JSONC comments and later user edits, and leaves ordinary SSH usable after uninstall.
+- Add local compatibility-profile, uninstall recovery, bundled-hook, and package verification coverage.
+
 ## 1.1.0 — 2026-11-09
 
 - Lower the VS Code API floor from 1.85.0 to 1.73.0, compile against matching API types, and document Remote-SSH's independent editor-version requirement.

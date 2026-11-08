@@ -76,19 +76,19 @@ Cancel the input to stop that authentication attempt. To remove a saved value, r
 
 Forget revokes pending saves so a delayed successful connection cannot silently restore an old credential. An answer already delivered to OpenSSH cannot be recalled; cancel outstanding connections as well when immediate removal is required.
 
-## Disable before uninstalling
+## Disable or uninstall
 
 1. Forget any credentials you want deleted.
-2. Run **SSH Password Memory: Disable and Restore SSH Settings**.
-3. Disable or uninstall the extension.
+2. Run **SSH Password Memory: Disable and Restore SSH Settings** for immediate restoration, or uninstall normally.
+3. Complete a full VS Code shutdown and restart after uninstall so the `vscode:uninstall` hook runs.
 
-Disabling preserves saved credentials. Uninstallation is not a credential-erasure guarantee. Settings are restored only if they still match values installed by the extension; your later edits are retained.
+Disabling preserves saved credentials. Uninstallation is not a credential-erasure guarantee. The uninstall hook restores only settings that still match values installed by the extension; later edits and JSONC comments are preserved.
 
 ## Restore Remote-SSH after removal
 
-VS Code has no dependable uninstall callback. The stable bridge is deliberately stored outside the versioned extension directory. If the extension is unavailable, it runs real OpenSSH without reading saved credentials, provided both the bridge and real OpenSSH still exist. An in-progress connection may fail; retry with ordinary authentication.
+The registered `vscode:uninstall` hook runs from the extension directory during the next full VS Code restart after a normal uninstall. It reads the password-free `uninstall-v1.json` recovery snapshot, restores unchanged extension-owned settings, and disables the stable bridge. If the extension is unavailable before that hook runs, the bridge still executes real OpenSSH without reading saved credentials while its files remain present.
 
-Deleting global storage, quarantining the bridge, or moving the real SSH executable can break fallback. Restore the path before deleting remaining bridge files:
+Manual restoration is needed when the extension directory or global storage was deleted, the hook could not run, quarantining removed the bridge, or the real SSH executable moved. Restore the path before deleting any remaining bridge files:
 
 1. Open **Preferences: Open User Settings (JSON)**.
 2. Locate the extension's `bridge-v2/<version-hash>/recovery.json`, using the diagnostic path or the current `remote.SSH.path`. The record contains original settings, not passwords.

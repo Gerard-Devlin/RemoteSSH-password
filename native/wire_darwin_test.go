@@ -80,7 +80,7 @@ func TestDarwinSocketIdentityAndLock(t *testing.T) {
 }
 
 func TestDarwinDiagnosticsIsolation(t *testing.T) {
-	for _, arg := range quietArgs([]string{"host"}) {
+	for _, arg := range quietArgs([]string{"host"}, "") {
 		if strings.Contains(arg, "authmethod_get") || strings.Contains(arg, "input_userauth_failure") {
 			t.Fatal("server-provided method list logging enabled")
 		}
