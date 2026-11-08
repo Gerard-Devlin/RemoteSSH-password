@@ -42,6 +42,16 @@ type taggedLogParts struct {
 	pid      string
 }
 
+func visibleTaggedBody(function, body string) bool {
+	if function == "ssh_packet_read_poll2" {
+		return false
+	}
+	if function == "authmethod_get" {
+		return strings.HasPrefix(body, "Next authentication method: ")
+	}
+	return true
+}
+
 func parseTaggedLog(line string) (taggedLogParts, bool) {
 	if match := taggedLog.FindStringSubmatch(line); match != nil {
 		return taggedLogParts{function: match[2], pid: match[4], body: match[5]}, true
@@ -119,7 +129,7 @@ func (s *authSession) consumeLine(line []byte) {
 	}
 	success := s.state.Success
 	s.mu.Unlock()
-	if m.function != "ssh_packet_read_poll2" {
+	if visibleTaggedBody(m.function, body) {
 		fmt.Fprintln(os.Stderr, body)
 	}
 	if success {

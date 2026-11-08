@@ -173,6 +173,18 @@ func TestTaggedTruncatedWindowsSourceNames(t *testing.T) {
 	}
 }
 
+func TestTaggedLogVisibility(t *testing.T) {
+	if visibleTaggedBody("authmethod_get", "start over, passed a different list password,publickey") {
+		t.Fatal("server authentication list would be exposed")
+	}
+	if !visibleTaggedBody("authmethod_get", "Next authentication method: password") {
+		t.Fatal("selected authentication method was hidden")
+	}
+	if visibleTaggedBody("ssh_packet_read_poll2", "receive packet: type 52") {
+		t.Fatal("numeric packet diagnostic would be exposed")
+	}
+}
+
 func TestQuietArgs(t *testing.T) {
 	a := []string{"-vT", "-oLogLevel=DEBUG3", "-o", "LogVerbose=*", "-p22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}
 	profile, ok := windowsOpenSSHProfileFor(
@@ -185,7 +197,7 @@ func TestQuietArgs(t *testing.T) {
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
 	}
-	if strings.Contains(v[4], "authmethod_get():*,") {
+	if strings.Contains(v[4], "input_userauth_info_req():*,") {
 		t.Fatal("unsafe wide logging")
 	}
 }
