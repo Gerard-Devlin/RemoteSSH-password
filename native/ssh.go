@@ -33,7 +33,7 @@ type authSession struct {
 	packetPrefix string
 }
 
-var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*(sshconnect2?\\.c|readpass\\.c|packet\\.c):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
+var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
 
 func (s *authSession) consumeLog(r io.Reader) {
 	reader := bufio.NewReaderSize(r, 65536)

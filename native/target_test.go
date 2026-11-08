@@ -154,6 +154,18 @@ func TestTaggedSuccess(t *testing.T) {
 	}
 }
 
+func TestTaggedTruncatedWindowsSourceNames(t *testing.T) {
+	for _, line := range []string{
+		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\sshconn:verify_host_key():1506 (pid=23776): Server host key: ssh-ed25519 SHA256:test`,
+		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\readpas:read_passphrase():175 (pid=23776): requested to askpass`,
+		`debug3: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\packet.:ssh_packet_read_poll2():1664 (pid=23776): receive packet: type 52`,
+	} {
+		if taggedLog.FindStringSubmatch(line) == nil {
+			t.Fatalf("truncated Windows source log not parsed: %s", line)
+		}
+	}
+}
+
 func TestQuietArgs(t *testing.T) {
 	a := []string{"-vT", "-oLogLevel=DEBUG3", "-o", "LogVerbose=*", "-p22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}
 	profile, ok := windowsOpenSSHProfileFor(
