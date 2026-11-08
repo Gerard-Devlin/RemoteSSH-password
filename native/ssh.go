@@ -34,6 +34,23 @@ type authSession struct {
 }
 
 var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
+var taggedLogTruncatedBin = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\(bin=.*?: (.*)$")
+
+type taggedLogParts struct {
+	function string
+	body     string
+	pid      string
+}
+
+func parseTaggedLog(line string) (taggedLogParts, bool) {
+	if match := taggedLog.FindStringSubmatch(line); match != nil {
+		return taggedLogParts{function: match[2], pid: match[4], body: match[5]}, true
+	}
+	if match := taggedLogTruncatedBin.FindStringSubmatch(line); match != nil {
+		return taggedLogParts{function: match[2], body: match[4]}, true
+	}
+	return taggedLogParts{}, false
+}
 
 func askpassDiagnostic(stage string) {
 	if os.Getenv("SSHPM_DIAGNOSTIC_ASKPASS") != "" {
@@ -70,26 +87,26 @@ func (s *authSession) consumeLog(r io.Reader) {
 }
 func (s *authSession) consumeLine(line []byte) {
 	l := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
-	m := taggedLog.FindStringSubmatch(l)
-	if m == nil || m[4] != strconv.Itoa(int(s.pid)) {
+	m, ok := parseTaggedLog(l)
+	if !ok || (m.pid != "" && m.pid != strconv.Itoa(int(s.pid))) {
 		os.Stderr.Write(line)
 		return
 	}
-	body := m[5]
+	body := m.body
 	if strings.HasPrefix(l, "debug1: ") {
 		body = "debug1: " + body
 	}
 	s.mu.Lock()
-	updatePlatformState(&s.state, m[2], m[5])
-	if m[2] == "read_passphrase" && strings.Contains(body, "requested to askpass") {
+	updatePlatformState(&s.state, m.function, m.body)
+	if m.function == "read_passphrase" && strings.Contains(body, "requested to askpass") {
 		s.logAsks++
 	}
 	if !s.completed {
-		if m[2] == "ssh_packet_read_poll2" {
-			s.packetPrefix = strings.TrimSuffix(l, m[5]) + "receive packet: type "
-			s.state.packet(m[5])
+		if m.function == "ssh_packet_read_poll2" {
+			s.packetPrefix = strings.TrimSuffix(l, m.body) + "receive packet: type "
+			s.state.packet(m.body)
 		} else {
-			if m[2] == "input_userauth_info_req" {
+			if m.function == "input_userauth_info_req" {
 				if strings.HasPrefix(body, "num_prompts ") {
 					if n, e := strconv.Atoi(strings.TrimPrefix(body, "num_prompts ")); e == nil {
 						s.state.keyboardPrompts(n)
@@ -102,7 +119,7 @@ func (s *authSession) consumeLine(line []byte) {
 	}
 	success := s.state.Success
 	s.mu.Unlock()
-	if m[2] != "ssh_packet_read_poll2" {
+	if m.function != "ssh_packet_read_poll2" {
 		fmt.Fprintln(os.Stderr, body)
 	}
 	if success {

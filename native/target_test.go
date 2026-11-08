@@ -142,13 +142,13 @@ func TestPipeName(t *testing.T) {
 
 func TestTaggedSuccess(t *testing.T) {
 	line := "C:\\\\__w\\\\1\\\\s\\\\sshconnect2.c:ssh_userauth2():501 (pid=23776): Authenticated to 127.0.0.1 ([127.0.0.1]:11427) using \"password\"."
-	m := taggedLog.FindStringSubmatch(line)
-	if m == nil {
+	m, ok := parseTaggedLog(line)
+	if !ok {
 		t.Fatal("no match")
 	}
 	t.Logf("parts=%q", m)
 	s := AuthState{Verified: true, Accepted: true}
-	s.line(m[5])
+	s.line(m.body)
 	if !s.Success {
 		t.Fatal("not success")
 	}
@@ -160,9 +160,14 @@ func TestTaggedTruncatedWindowsSourceNames(t *testing.T) {
 		`debug1: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\readpas:read_passphrase():175 (pid=23776): requested to askpass`,
 		`debug3: C:\\a\\_work\\1\\s\\OSS_Microsoft_OpenSSH_Dev\\packet.:ssh_packet_read_poll2():1664 (pid=23776): receive packet: type 52`,
 	} {
-		if taggedLog.FindStringSubmatch(line) == nil {
+		if _, ok := parseTaggedLog(line); !ok {
 			t.Fatalf("truncated Windows source log not parsed: %s", line)
 		}
+	}
+	line := `debug1: C:\\__w\\1\\s\\readpass.c:read_passphrase():176 (bin=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\openssh-10.0p: requested to askpass`
+	m, ok := parseTaggedLog(line)
+	if !ok || m.pid != "" || m.function != "read_passphrase" || m.body != "requested to askpass" {
+		t.Fatalf("truncated bin tag not parsed: %+v", m)
 	}
 }
 
