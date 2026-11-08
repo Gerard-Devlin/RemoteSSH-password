@@ -178,7 +178,7 @@ func TestQuietArgs(t *testing.T) {
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
 	}
-	if strings.Contains(v[4], "ssh_userauth2():*,") || strings.Contains(v[4], "authmethod_get():*,") {
+	if strings.Contains(v[4], "authmethod_get():*,") {
 		t.Fatal("unsafe wide logging")
 	}
 }

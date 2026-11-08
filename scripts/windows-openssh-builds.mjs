@@ -129,6 +129,7 @@ try {
         ['scripts/integration.mjs'],
         {
           SSHPM_REAL_SSH: ssh,
+          SSHPM_DIAGNOSTIC_ASKPASS: '1',
           SSHPM_INTEGRATION_RESULT: path.join(
             root,
             'artifacts',
@@ -141,6 +142,7 @@ try {
         ['scripts/extension-tests.mjs', 'en'],
         {
           SSHPM_REAL_SSH: ssh,
+          SSHPM_DIAGNOSTIC_ASKPASS: '1',
           SSHPM_EXTENSION_RESULT: path.join(
             root,
             'artifacts',

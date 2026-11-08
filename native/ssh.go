@@ -35,6 +35,12 @@ type authSession struct {
 
 var taggedLog = regexp.MustCompile("^(?:debug[123]: )?.*((?:sshconnect2?\\.c|sshconn2?|readpass\\.c|readpas|packet\\.c|packet\\.)):([a-zA-Z_0-9]+)\\(\\):(\\d+) \\((?:bin=[^\\r\\n]+, )?pid=(\\d+)\\): (.*)$")
 
+func askpassDiagnostic(stage string) {
+	if os.Getenv("SSHPM_DIAGNOSTIC_ASKPASS") != "" {
+		fmt.Fprintln(os.Stderr, "SSHPasswordMemory askpass diagnostic: "+stage)
+	}
+}
+
 func (s *authSession) consumeLog(r io.Reader) {
 	reader := bufio.NewReaderSize(r, 65536)
 	fragmented := false
@@ -124,16 +130,23 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 		return
 	}
 	pid, e := peerPID(c, false)
-	if e != nil || !samePath(processImage(pid), filepath.Join(dir, executableName("askpass"))) {
+	if e != nil {
+		askpassDiagnostic("peer-pid")
+		return
+	}
+	if !samePath(processImage(pid), filepath.Join(dir, executableName("askpass"))) {
+		askpassDiagnostic("peer-image")
 		return
 	}
 	if !allowedAskpass(pid, s.pid) {
+		askpassDiagnostic("peer-parent")
 		return
 	}
 	ch := channel(c)
 	ch.SetReadDeadline(time.Now().Add(5 * time.Second))
 	m, e := ch.read()
 	if e != nil || m.Type != "prompt" || len(m.Prompt) > 8192 {
+		askpassDiagnostic("prompt-frame")
 		return
 	}
 	ch.SetReadDeadline(time.Time{})
@@ -148,6 +161,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 		if s.child != nil {
 			s.child.Kill()
 		}
+		askpassDiagnostic("canceled-before-answer")
 		ch.send(Message{Reply: &Reply{Canceled: true}})
 		return
 	}
@@ -165,6 +179,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 			if s.child != nil {
 				s.child.Kill()
 			}
+			askpassDiagnostic("log-marker-timeout")
 			s.mu.Lock()
 			s.canceled = true
 			s.mu.Unlock()
@@ -188,6 +203,7 @@ func (s *authSession) serveAsk(c net.Conn, dir string) {
 	s.mu.Unlock()
 	answer, e := s.rpc.request(Message{Type: "ask", Target: s.target, Fingerprint: st.Fingerprint, Verified: st.Verified, Kind: kind, Prompt: m.Prompt, Failed: failed}, 4*time.Minute)
 	if e != nil || answer.Reply == nil {
+		askpassDiagnostic("broker-reply")
 		answer.Reply = &Reply{Canceled: true}
 	}
 	if answer.Reply.Canceled {
@@ -321,16 +337,19 @@ func runAskpass(dir string, args []string) int {
 	}
 	c, e := dialVerified(p, filepath.Join(dir, executableName("ssh")), 3*time.Second)
 	if e != nil {
+		askpassDiagnostic("client-connect")
 		return 1
 	}
 	defer c.Close()
 	ch := channel(c)
 	ch.SetReadDeadline(time.Now().Add(4 * time.Minute))
 	if ch.send(Message{Type: "prompt", Prompt: args[0], Kind: os.Getenv("SSH_ASKPASS_PROMPT")}) != nil {
+		askpassDiagnostic("client-prompt-write")
 		return 1
 	}
 	m, e := ch.read()
 	if e != nil || m.Reply == nil || m.Reply.Canceled || len(m.Reply.Value) > 8192 || strings.ContainsAny(m.Reply.Value, "\x00\r\n") {
+		askpassDiagnostic("client-answer")
 		return 1
 	}
 	fmt.Fprintln(os.Stdout, m.Reply.Value)
