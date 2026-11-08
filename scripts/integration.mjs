@@ -265,7 +265,7 @@ try {
     assert.equal(r.stdout, 'fixture-ok\n');
     assert.equal(trusts, 1);
     assert.equal(prompts, 1);
-    assert.equal(secrets.size, 1);
+    assert.equal(secrets.size, 1, r.stderr);
     assert.ok(b.messages.some((m) => m.kind === 'password' && m.verified));
   });
   await check('reconnect uses saved password without prompt', async () => {

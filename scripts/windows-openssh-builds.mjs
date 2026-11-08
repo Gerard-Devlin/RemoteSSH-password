@@ -96,55 +96,66 @@ const temporary = await fs.mkdtemp(
   path.join(os.tmpdir(), 'sshpm-windows-builds-'),
 );
 await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
+const failures = [];
 try {
   for (const profile of profiles) {
-    console.log('\n=== ' + profile.displayVersion + ' ===');
-    const archive = await download(profile.archive.url, profile.archive.sha256);
-    const directory = path.join(temporary, profile.id);
-    await extractZip(archive, directory);
-    const ssh = path.join(directory, 'OpenSSH-Win64', 'ssh.exe');
-    const bytes = await fs.readFile(ssh);
-    const actual = sha256(bytes);
-    if (actual !== profile.sha256)
-      throw new Error(
-        profile.id + ' ssh.exe SHA256 mismatch: received ' + actual,
+    try {
+      console.log('\n=== ' + profile.displayVersion + ' ===');
+      const archive = await download(
+        profile.archive.url,
+        profile.archive.sha256,
       );
-    await fs.access(path.join(directory, 'OpenSSH-Win64', 'scp.exe'));
-    if (verifyArchives && process.platform !== 'win32') {
-      console.log('Verified archive and ssh.exe hashes for ' + profile.id);
-      continue;
+      const directory = path.join(temporary, profile.id);
+      await extractZip(archive, directory);
+      const ssh = path.join(directory, 'OpenSSH-Win64', 'ssh.exe');
+      const bytes = await fs.readFile(ssh);
+      const actual = sha256(bytes);
+      if (actual !== profile.sha256)
+        throw new Error(
+          profile.id + ' ssh.exe SHA256 mismatch: received ' + actual,
+        );
+      await fs.access(path.join(directory, 'OpenSSH-Win64', 'scp.exe'));
+      if (verifyArchives && process.platform !== 'win32') {
+        console.log('Verified archive and ssh.exe hashes for ' + profile.id);
+        continue;
+      }
+      const version = spawnSync(ssh, ['-V'], { encoding: 'utf8' });
+      const label = (version.stdout || '') + (version.stderr || '');
+      if (version.status !== 0 || !label.includes(profile.versionMarker))
+        throw new Error(
+          profile.id + ' version mismatch: ' + JSON.stringify(label),
+        );
+      run(
+        ['scripts/integration.mjs'],
+        {
+          SSHPM_REAL_SSH: ssh,
+          SSHPM_INTEGRATION_RESULT: path.join(
+            root,
+            'artifacts',
+            'integration-results-' + profile.id + '.json',
+          ),
+        },
+        profile.id + ' integration',
+      );
+      run(
+        ['scripts/extension-tests.mjs', 'en'],
+        {
+          SSHPM_REAL_SSH: ssh,
+          SSHPM_EXTENSION_RESULT: path.join(
+            root,
+            'artifacts',
+            'extension-results-' + profile.id + '.json',
+          ),
+        },
+        profile.id + ' extension-entry',
+      );
+    } catch (error) {
+      console.error(String(error?.stack || error));
+      failures.push(profile.id);
     }
-    const version = spawnSync(ssh, ['-V'], { encoding: 'utf8' });
-    const label = (version.stdout || '') + (version.stderr || '');
-    if (version.status !== 0 || !label.includes(profile.versionMarker))
-      throw new Error(
-        profile.id + ' version mismatch: ' + JSON.stringify(label),
-      );
-    run(
-      ['scripts/integration.mjs'],
-      {
-        SSHPM_REAL_SSH: ssh,
-        SSHPM_INTEGRATION_RESULT: path.join(
-          root,
-          'artifacts',
-          'integration-results-' + profile.id + '.json',
-        ),
-      },
-      profile.id + ' integration',
-    );
-    run(
-      ['scripts/extension-tests.mjs', 'en'],
-      {
-        SSHPM_REAL_SSH: ssh,
-        SSHPM_EXTENSION_RESULT: path.join(
-          root,
-          'artifacts',
-          'extension-results-' + profile.id + '.json',
-        ),
-      },
-      profile.id + ' extension-entry',
-    );
   }
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
 }
+if (failures.length)
+  throw new Error('Windows OpenSSH profile failures: ' + failures.join(', '));
