@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-09
+
+- Lower the VS Code API floor from 1.85.0 to 1.73.0, compile against matching API types, and document Remote-SSH's independent editor-version requirement.
+- Add release-policy checks that keep the manifest engine, type definitions, lockfile, and compatibility documentation aligned.
+
 ## 1.0.1 — 2026-11-07
 
 - Publish the first stable build as 1.0.1 after GitHub's immutable-release policy permanently reserved the deleted v1.0.0 tag name during release recovery.

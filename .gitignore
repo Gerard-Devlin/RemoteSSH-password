@@ -4,6 +4,7 @@ bin/
 artifacts/
 .test-runtime/
 .test-host/
+.vscode-test/
 *.log
 *.vsix
 .env

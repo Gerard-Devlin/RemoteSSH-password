@@ -4,7 +4,9 @@
 
 ## VS Code says the extension is incompatible
 
-Version 0.2.0 declared VS Code 1.144.0 as its minimum, so 1.136.1 was rejected before activation. Version 0.3.0 lowers this to 1.85.0 and uses the matching API types. Install the new package for your local platform. The earlier published package retains its original compatibility declaration until the new version is published.
+Version 0.2.0 declared VS Code 1.144.0 as its minimum, so 1.136.1 was rejected before activation. Current builds lower the minimum to 1.73.0 and compile against matching API types. Install the new package for your local platform. Earlier published packages retain their original compatibility declaration until the new version is published.
+
+Microsoft Remote-SSH has its own editor requirement. If its newest release is incompatible with your VS Code version, install the newest Remote-SSH release that supports that editor. The password-memory package does not raise VS Code's minimum beyond its own 1.73.0 API floor.
 
 ## macOS setup
 
