@@ -49,6 +49,13 @@ func visibleTaggedBody(function, body string) bool {
 	if function == "authmethod_get" {
 		return strings.HasPrefix(body, "Next authentication method: ")
 	}
+	if function == "input_userauth_info_req" {
+		return strings.HasPrefix(body, "num_prompts ")
+	}
+	if function == "input_userauth_failure" {
+		return strings.HasPrefix(body, "Authenticated using \"") &&
+			strings.HasSuffix(body, " with partial success.")
+	}
 	return true
 }
 

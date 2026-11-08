@@ -183,6 +183,18 @@ func TestTaggedLogVisibility(t *testing.T) {
 	if visibleTaggedBody("ssh_packet_read_poll2", "receive packet: type 52") {
 		t.Fatal("numeric packet diagnostic would be exposed")
 	}
+	if visibleTaggedBody("input_userauth_info_req", "server supplied instruction") {
+		t.Fatal("server keyboard-interactive instruction would be exposed")
+	}
+	if !visibleTaggedBody("input_userauth_info_req", "num_prompts 1") {
+		t.Fatal("keyboard-interactive prompt count was hidden")
+	}
+	if visibleTaggedBody("input_userauth_failure", "Authentications that can continue: password,publickey") {
+		t.Fatal("server authentication list would be exposed")
+	}
+	if !visibleTaggedBody("input_userauth_failure", `Authenticated using "password" with partial success.`) {
+		t.Fatal("partial-success marker was hidden")
+	}
 }
 
 func TestQuietArgs(t *testing.T) {
@@ -196,9 +208,6 @@ func TestQuietArgs(t *testing.T) {
 	v := windowsQuietArgs(a, profile.LogVerbose)
 	if !reflect.DeepEqual(v[5:], []string{"-T", "-p", "22", "host", "echo", "-v", "-oLogLevel=DEBUG3"}) {
 		t.Fatal(v)
-	}
-	if strings.Contains(v[4], "input_userauth_info_req():*,") {
-		t.Fatal("unsafe wide logging")
 	}
 }
 
